@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>create_config module &mdash; NL-FM-Toolkit  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="tokenize_corpus module" href="tokenize_corpus.html" />
+    <link rel="prev" title="train_tokenizer module" href="train_tokenizer.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NL-FM-Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html">Training a Tokenizer from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html#creating-model-configuration-file">Creating Model Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mlm_train.html">Training a Masked Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../clm_train.html">Training a Causal Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../token_classifier_train.html">Training a Sequence Labeler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sequence_classifier_train.html">Training a Sequence Classifier</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Scripts</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="train_tokenizer.html">train_tokenizer module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">create_config module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#create_config.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tokenize_corpus.html">tokenize_corpus module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_clm.html">run_clm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_mlm.html">run_mlm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq_to_seq_pretrain.html">run_seq_to_seq_pretrain module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_tc.html">run_tc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html">run_seq module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_collator_for_seq_to_seq.html">data_collator_for_seq_to_seq module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NL-FM-Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Modules</a></li>
+      <li class="breadcrumb-item active">create_config module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/create_config.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-create_config">
+<span id="create-config-module"></span><h1>create_config module<a class="headerlink" href="#module-create_config" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="create_config.main">
+<span class="sig-prename descclassname"><span class="pre">create_config.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/create_config.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#create_config.main" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<p><p>Create config.json file</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">create_config</span><span class="o">.</span><span class="n">py</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">path</span> <span class="n">PATH</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">type</span> <span class="p">{</span><span class="n">gpt2</span><span class="p">,</span><span class="n">mt5</span><span class="p">,</span><span class="n">led</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">vocab_size</span> <span class="n">VOCAB_SIZE</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="named-arguments">
+<h2>Named Arguments<a class="headerlink" href="#named-arguments" title="Permalink to this heading"></a></h2>
+<dl class="option-list">
+<dt><kbd>--path</kbd></dt>
+<dd><p>Path where the config.json file will be created</p>
+<p>Default: “models/gpt2_event_tokenizer”</p>
+</dd>
+<dt><kbd>--type</kbd></dt>
+<dd><p>Possible choices: gpt2, mt5, led</p>
+<p>Type of pre-trained model</p>
+<p>Default: “gpt2”</p>
+</dd>
+<dt><kbd>--vocab_size</kbd></dt>
+<dd><p>Vocabulary Size of the tokenizer</p>
+<p>Default: 30000</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="train_tokenizer.html" class="btn btn-neutral float-left" title="train_tokenizer module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tokenize_corpus.html" class="btn btn-neutral float-right" title="tokenize_corpus module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tejas Indulal Dhamecha, Rudra Murthy.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+sh scripts/run_clm_test.sh demo/data/lm/english_sample.txt demo/data/lm/english_sample.txt demo/model/clm/ demo/model/tokenizer/ gpt2 16

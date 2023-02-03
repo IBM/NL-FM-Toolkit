@@ -1,0 +1,5 @@
+sentence	Label
+I liked the movie	1
+I hated the movie	0
+The movie was good	1
+The movie was bad	0

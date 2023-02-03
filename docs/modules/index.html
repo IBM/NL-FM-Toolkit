@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modules &mdash; NL-FM-Toolkit  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="train_tokenizer module" href="train_tokenizer.html" />
+    <link rel="prev" title="Training a Sequence Classifier" href="../sequence_classifier_train.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NL-FM-Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html">Training a Tokenizer from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html#creating-model-configuration-file">Creating Model Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mlm_train.html">Training a Masked Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../clm_train.html">Training a Causal Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../token_classifier_train.html">Training a Sequence Labeler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sequence_classifier_train.html">Training a Sequence Classifier</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Scripts</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Modules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="train_tokenizer.html">train_tokenizer module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="create_config.html">create_config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tokenize_corpus.html">tokenize_corpus module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_clm.html">run_clm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_mlm.html">run_mlm module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq_to_seq_pretrain.html">run_seq_to_seq_pretrain module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_tc.html">run_tc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html">run_seq module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_collator_for_seq_to_seq.html">data_collator_for_seq_to_seq module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NL-FM-Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active">Modules</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="modules">
+<h1>Modules<a class="headerlink" href="#modules" title="Permalink to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="train_tokenizer.html">train_tokenizer module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="train_tokenizer.html#train_tokenizer.add_vocab_from_file"><code class="docutils literal notranslate"><span class="pre">add_vocab_from_file()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="train_tokenizer.html#train_tokenizer.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="train_tokenizer.html#named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="create_config.html">create_config module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="create_config.html#create_config.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="create_config.html#named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tokenize_corpus.html">tokenize_corpus module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tokenize_corpus.html#tokenize_corpus.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tokenize_corpus.html#named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="run_clm.html">run_clm module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.block_size"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.block_size</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.dataset_config_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.dataset_config_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.dataset_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.dataset_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.keep_linebreaks"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.keep_linebreaks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.line_by_line"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.line_by_line</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.max_eval_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_eval_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.max_seq_length"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_seq_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.max_train_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_train_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.overwrite_cache"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.overwrite_cache</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.pad_to_max_length"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.pad_to_max_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.preprocessing_num_workers"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.preprocessing_num_workers</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.test_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.test_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.train_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.train_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.validation_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.validation_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.DataTrainingArguments.validation_split_percentage"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.validation_split_percentage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments"><code class="docutils literal notranslate"><span class="pre">ModelArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.cache_dir"><code class="docutils literal notranslate"><span class="pre">ModelArguments.cache_dir</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.config_name"><code class="docutils literal notranslate"><span class="pre">ModelArguments.config_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.config_overrides"><code class="docutils literal notranslate"><span class="pre">ModelArguments.config_overrides</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.model_name_or_path"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_name_or_path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.model_revision"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_revision</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.model_type"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.tokenizer_name"><code class="docutils literal notranslate"><span class="pre">ModelArguments.tokenizer_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.use_auth_token"><code class="docutils literal notranslate"><span class="pre">ModelArguments.use_auth_token</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_clm.html#run_clm.ModelArguments.use_fast_tokenizer"><code class="docutils literal notranslate"><span class="pre">ModelArguments.use_fast_tokenizer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_clm.html#run_clm.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="run_mlm.html">run_mlm module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.dataset_config_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.dataset_config_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.dataset_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.dataset_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.keep_linebreaks"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.keep_linebreaks</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.line_by_line"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.line_by_line</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.max_eval_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_eval_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.max_seq_length"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_seq_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.max_train_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_train_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.mlm_probability"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.mlm_probability</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.overwrite_cache"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.overwrite_cache</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.pad_to_max_length"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.pad_to_max_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.preprocessing_num_workers"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.preprocessing_num_workers</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.test_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.test_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.train_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.train_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.validation_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.validation_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.DataTrainingArguments.validation_split_percentage"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.validation_split_percentage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments"><code class="docutils literal notranslate"><span class="pre">ModelArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.cache_dir"><code class="docutils literal notranslate"><span class="pre">ModelArguments.cache_dir</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.config_name"><code class="docutils literal notranslate"><span class="pre">ModelArguments.config_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.config_overrides"><code class="docutils literal notranslate"><span class="pre">ModelArguments.config_overrides</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.freeze_token_embed"><code class="docutils literal notranslate"><span class="pre">ModelArguments.freeze_token_embed</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.model_name_or_path"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_name_or_path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.model_revision"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_revision</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.model_type"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.pretrained_token_embed"><code class="docutils literal notranslate"><span class="pre">ModelArguments.pretrained_token_embed</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.tokenizer_name"><code class="docutils literal notranslate"><span class="pre">ModelArguments.tokenizer_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.use_auth_token"><code class="docutils literal notranslate"><span class="pre">ModelArguments.use_auth_token</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_mlm.html#run_mlm.ModelArguments.use_fast_tokenizer"><code class="docutils literal notranslate"><span class="pre">ModelArguments.use_fast_tokenizer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_mlm.html#run_mlm.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_mlm.html#run_mlm.read_txt_embeddings"><code class="docutils literal notranslate"><span class="pre">read_txt_embeddings()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="run_seq_to_seq_pretrain.html">run_seq_to_seq_pretrain module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_tc.html">run_tc module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_seq.html">run_seq module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.dataset_config_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.dataset_config_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.dataset_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.dataset_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.max_eval_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_eval_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.max_predict_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_predict_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.max_seq_length"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_seq_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.max_train_samples"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.max_train_samples</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.overwrite_cache"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.overwrite_cache</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.pad_to_max_length"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.pad_to_max_length</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.task_name"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.task_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.test_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.test_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.train_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.train_file</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.DataTrainingArguments.validation_file"><code class="docutils literal notranslate"><span class="pre">DataTrainingArguments.validation_file</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html#run_seq.GOATTrainer"><code class="docutils literal notranslate"><span class="pre">GOATTrainer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments"><code class="docutils literal notranslate"><span class="pre">ModelArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.cache_dir"><code class="docutils literal notranslate"><span class="pre">ModelArguments.cache_dir</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.config_name"><code class="docutils literal notranslate"><span class="pre">ModelArguments.config_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.model_name_or_path"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_name_or_path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.model_revision"><code class="docutils literal notranslate"><span class="pre">ModelArguments.model_revision</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.tokenizer_name"><code class="docutils literal notranslate"><span class="pre">ModelArguments.tokenizer_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.use_auth_token"><code class="docutils literal notranslate"><span class="pre">ModelArguments.use_auth_token</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.ModelArguments.use_fast_tokenizer"><code class="docutils literal notranslate"><span class="pre">ModelArguments.use_fast_tokenizer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html#run_seq.TaskArguments"><code class="docutils literal notranslate"><span class="pre">TaskArguments</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.TaskArguments.early_stop"><code class="docutils literal notranslate"><span class="pre">TaskArguments.early_stop</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="run_seq.html#run_seq.TaskArguments.task"><code class="docutils literal notranslate"><span class="pre">TaskArguments.task</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="run_seq.html#run_seq.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data_collator_for_seq_to_seq.html">data_collator_for_seq_to_seq module</a></li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../sequence_classifier_train.html" class="btn btn-neutral float-left" title="Training a Sequence Classifier" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="train_tokenizer.html" class="btn btn-neutral float-right" title="train_tokenizer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tejas Indulal Dhamecha, Rudra Murthy.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

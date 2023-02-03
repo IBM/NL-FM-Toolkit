@@ -1,0 +1,1 @@
+sh scripts/run_mlm_test.sh demo/data/lm/english_sample.txt demo/data/lm/english_sample.txt demo/model/mlm/ demo/model/tokenizer/ bert 16

@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>run_mlm &mdash; NL-FM-Toolkit  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NL-FM-Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html">Training a Tokenizer from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html#creating-model-configuration-file">Creating Model Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mlm_train.html">Training a Masked Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../clm_train.html">Training a Causal Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../token_classifier_train.html">Training a Sequence Labeler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sequence_classifier_train.html">Training a Sequence Classifier</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Scripts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/index.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NL-FM-Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">run_mlm</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for run_mlm</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding=utf-8</span>
+<span class="c1"># Copyright 2020 The HuggingFace Inc. team. All rights reserved.</span>
+<span class="c1"># Modifications copyright (C) 2022 IBM</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Fine-tuning the library models for masked language modeling (BERT, ALBERT, RoBERTa...) on a text file or a dataset.</span>
+
+<span class="sd">Here is the full list of checkpoints on the hub that can be fine-tuned by this script:</span>
+<span class="sd">https://huggingface.co/models?filter=fill-mask</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1"># You can also adapt this script on your own masked language modeling task.</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">import</span> <span class="nn">codecs</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">datasets</span>
+<span class="kn">from</span> <span class="nn">datasets</span> <span class="kn">import</span> <span class="n">load_dataset</span><span class="p">,</span> <span class="n">load_metric</span>
+
+<span class="kn">import</span> <span class="nn">transformers</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="p">(</span>
+	<span class="n">CONFIG_MAPPING</span><span class="p">,</span>
+	<span class="n">MODEL_FOR_MASKED_LM_MAPPING</span><span class="p">,</span>
+	<span class="n">BertForMaskedLM</span><span class="p">,</span>
+	<span class="n">AutoConfig</span><span class="p">,</span>
+	<span class="n">AutoModelForMaskedLM</span><span class="p">,</span>
+	<span class="n">AutoTokenizer</span><span class="p">,</span>
+	<span class="n">DataCollatorForLanguageModeling</span><span class="p">,</span>
+	<span class="n">HfArgumentParser</span><span class="p">,</span>
+	<span class="n">Trainer</span><span class="p">,</span>
+	<span class="n">TrainingArguments</span><span class="p">,</span>
+	<span class="n">set_seed</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">transformers.testing_utils</span> <span class="kn">import</span> <span class="n">CaptureLogger</span>
+<span class="kn">from</span> <span class="nn">transformers.trainer_utils</span> <span class="kn">import</span> <span class="n">get_last_checkpoint</span>
+<span class="kn">from</span> <span class="nn">transformers.utils</span> <span class="kn">import</span> <span class="n">check_min_version</span>
+<span class="kn">from</span> <span class="nn">transformers.utils.versions</span> <span class="kn">import</span> <span class="n">require_version</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;WANDB_DISABLED&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+
+<span class="c1"># Will error if the minimal version of Transformers is not installed. Remove at your own risks.</span>
+<span class="n">check_min_version</span><span class="p">(</span><span class="s2">&quot;4.14.0&quot;</span><span class="p">)</span>
+
+<span class="n">require_version</span><span class="p">(</span>
+	<span class="s2">&quot;datasets&gt;=1.8.0&quot;</span><span class="p">,</span>
+	<span class="s2">&quot;To fix: pip install -r examples/pytorch/language-modeling/requirements.txt&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">MODEL_CONFIG_CLASSES</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">MODEL_FOR_MASKED_LM_MAPPING</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+<span class="n">MODEL_TYPES</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">conf</span><span class="o">.</span><span class="n">model_type</span> <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">MODEL_CONFIG_CLASSES</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelArguments"><a class="viewcode-back" href="../run_mlm.html#run_mlm.ModelArguments">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">ModelArguments</span><span class="p">:</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Arguments pertaining to which model/config/tokenizer we are going to fine-tune, or train from scratch.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">model_name_or_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The model checkpoint for weights initialization.&quot;</span>
+			<span class="s2">&quot;Don&#39;t set if you want to train a model from scratch.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">model_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;If training from scratch, pass a model type from the list: &quot;</span>
+			<span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">MODEL_TYPES</span><span class="p">)</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">config_overrides</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Override some existing default config settings when a model is trained from scratch. Example: &quot;</span>
+			<span class="s2">&quot;n_embd=10,resid_pdrop=0.2,scale_attn_weights=false,summary_type=cls_index&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">config_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Pretrained config name or path if not the same as model_name&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">tokenizer_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Pretrained tokenizer name or path if not the same as model_name&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Where do you want to store the pretrained models downloaded from huggingface.co&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">use_fast_tokenizer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether to use one of the fast tokenizer (backed by the tokenizers library) or not.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">model_revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The specific model version to use (can be a branch name, tag name or commit id).&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">use_auth_token</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Will use the token generated when running `transformers-cli login` (necessary to use this script &quot;</span>
+			<span class="s2">&quot;with private models).&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">freeze_token_embed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Freeze the token embedding layer parameters&quot;</span><span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">pretrained_token_embed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Initialize the token embedding layer with pre-trained token embeddings&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_overrides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">config_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_name_or_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+		<span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+				<span class="s2">&quot;--config_overrides can&#39;t be used in combination with --config_name or --model_name_or_path&quot;</span>
+			<span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DataTrainingArguments"><a class="viewcode-back" href="../run_mlm.html#run_mlm.DataTrainingArguments">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">DataTrainingArguments</span><span class="p">:</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Arguments pertaining to what data we are going to input our model for training and eval.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">dataset_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The name of the dataset to use (via the datasets library).&quot;</span><span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">dataset_config_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The configuration name of the dataset to use (via the datasets library).&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">train_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The input training data file (a text file).&quot;</span><span class="p">}</span>
+	<span class="p">)</span>
+	<span class="n">validation_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;An optional input evaluation data file to evaluate the perplexity on (a text file).&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">test_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;An optional input evaluation data file to evaluate the perplexity on (a text file).&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">max_train_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;For debugging purposes or quicker training, truncate the number of training examples to this &quot;</span>
+			<span class="s2">&quot;value if set.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">max_eval_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;For debugging purposes or quicker training, truncate the number of evaluation examples to this &quot;</span>
+			<span class="s2">&quot;value if set.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">max_seq_length</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The maximum total input sequence length after tokenization. Sequences longer &quot;</span>
+			<span class="s2">&quot;than this will be truncated.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">line_by_line</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether distinct lines of text in the dataset are to be handled as distinct sequences.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">pad_to_max_length</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether to pad all samples to `max_seq_length`. &quot;</span>
+			<span class="s2">&quot;If False, will pad the samples dynamically when batching to the maximum length in the batch.&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">overwrite_cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Overwrite the cached training and evaluation sets&quot;</span><span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">validation_split_percentage</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+			<span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The percentage of the train set used as validation set in case there&#39;s no validation split&quot;</span>
+		<span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">preprocessing_num_workers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The number of processes to use for the preprocessing.&quot;</span><span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">keep_linebreaks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether to keep line breaks when using TXT files or not.&quot;</span><span class="p">},</span>
+	<span class="p">)</span>
+	<span class="n">mlm_probability</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+		<span class="n">default</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
+		<span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Ratio of tokens to mask for masked language modeling loss&quot;</span><span class="p">},</span>
+	<span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="p">(</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">dataset_name</span> <span class="ow">is</span> <span class="kc">None</span>
+			<span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_file</span> <span class="ow">is</span> <span class="kc">None</span>
+			<span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_file</span> <span class="ow">is</span> <span class="kc">None</span>
+		<span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+				<span class="s2">&quot;Need either a dataset name or a training/validation file.&quot;</span>
+			<span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="n">extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+				<span class="k">assert</span> <span class="n">extension</span> <span class="ow">in</span> <span class="p">[</span>
+					<span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+					<span class="s2">&quot;json&quot;</span><span class="p">,</span>
+					<span class="s2">&quot;txt&quot;</span><span class="p">,</span>
+				<span class="p">],</span> <span class="s2">&quot;`train_file` should be a csv, a json or a txt file.&quot;</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="n">extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+				<span class="k">assert</span> <span class="n">extension</span> <span class="ow">in</span> <span class="p">[</span>
+					<span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+					<span class="s2">&quot;json&quot;</span><span class="p">,</span>
+					<span class="s2">&quot;txt&quot;</span><span class="p">,</span>
+				<span class="p">],</span> <span class="s2">&quot;`validation_file` should be a csv, a json or a txt file.&quot;</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="n">extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+				<span class="k">assert</span> <span class="n">extension</span> <span class="ow">in</span> <span class="p">[</span>
+					<span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+					<span class="s2">&quot;json&quot;</span><span class="p">,</span>
+					<span class="s2">&quot;txt&quot;</span><span class="p">,</span>
+				<span class="p">],</span> <span class="s2">&quot;`test_file` should be a csv, a json or a txt file.&quot;</span></div>
+
+
+<div class="viewcode-block" id="read_txt_embeddings"><a class="viewcode-back" href="../run_mlm.html#run_mlm.read_txt_embeddings">[docs]</a><span class="k">def</span> <span class="nf">read_txt_embeddings</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;Load pre-trained word embeddings</span>
+<span class="sd">	Parameters</span>
+<span class="sd">	----------</span>
+<span class="sd">	filename : str</span>
+<span class="sd">			the path to the pre-trained word embedding file in Glove format</span>
+<span class="sd">	Returns</span>
+<span class="sd">	-------</span>
+<span class="sd">	wordEmbedding : numpy nd-array</span>
+<span class="sd">			Numpy array of embeddings</span>
+<span class="sd">	dictionary : dict</span>
+<span class="sd">			Dictionary of word to index mappings</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">word2id</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+	<span class="n">id2word</span> <span class="o">=</span> <span class="p">{}</span>
+
+	<span class="n">wv</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="n">dimension</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="k">with</span> <span class="n">codecs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span><span class="p">:</span>
+		<span class="c1"># read the file line by line</span>
+		<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f_in</span><span class="p">:</span>
+			<span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+			<span class="c1"># if line is not empty</span>
+			<span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+				<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+					<span class="n">dimension</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">vocabulary</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+					<span class="c1"># if we haven&#39;t already seen this word add it to dictionary and get the vectors</span>
+					<span class="k">if</span> <span class="n">vocabulary</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">word2id</span><span class="p">:</span>
+						<span class="k">if</span> <span class="n">vocabulary</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;@@&quot;</span><span class="p">):</span>
+							<span class="n">vocabulary</span> <span class="o">=</span> <span class="n">vocabulary</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+						<span class="k">else</span><span class="p">:</span>
+							<span class="n">vocabulary</span> <span class="o">=</span> <span class="n">vocabulary</span> <span class="o">+</span> <span class="s2">&quot;&lt;/w&gt;&quot;</span>
+
+						<span class="n">word2id</span><span class="p">[</span><span class="n">vocabulary</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">word2id</span><span class="p">)</span>
+						<span class="n">id2word</span><span class="p">[</span><span class="n">word2id</span><span class="p">[</span><span class="n">vocabulary</span><span class="p">]]</span> <span class="o">=</span> <span class="n">vocabulary</span>
+
+						<span class="k">if</span> <span class="n">dimension</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]):</span>
+							<span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+							<span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">dimension</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:])))</span>
+							<span class="n">exit</span><span class="p">()</span>
+
+						<span class="n">temp</span> <span class="o">=</span> <span class="p">[]</span>
+						<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]:</span>
+							<span class="n">temp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+						<span class="n">wv</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+
+	<span class="c1"># convert embedding list to numpy array</span>
+	<span class="n">wv_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">wv</span><span class="p">)</span>
+
+	<span class="k">return</span> <span class="n">wv_np</span><span class="p">,</span> <span class="n">word2id</span><span class="p">,</span> <span class="n">id2word</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../run_mlm.html#run_mlm.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+	<span class="c1"># See all possible arguments in src/transformers/training_args.py</span>
+	<span class="c1"># or by passing the --help flag to this script.</span>
+	<span class="c1"># We now keep distinct sets of args, for a cleaner separation of concerns.</span>
+
+	<span class="n">parser</span> <span class="o">=</span> <span class="n">HfArgumentParser</span><span class="p">(</span>
+		<span class="p">(</span><span class="n">ModelArguments</span><span class="p">,</span> <span class="n">DataTrainingArguments</span><span class="p">,</span> <span class="n">TrainingArguments</span><span class="p">)</span>
+	<span class="p">)</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.json&quot;</span><span class="p">):</span>
+		<span class="c1"># If we pass only one argument to the script and it&#39;s the path to a json file,</span>
+		<span class="c1"># let&#39;s parse it to get our arguments.</span>
+		<span class="n">model_args</span><span class="p">,</span> <span class="n">data_args</span><span class="p">,</span> <span class="n">training_args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_json_file</span><span class="p">(</span>
+			<span class="n">json_file</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">model_args</span><span class="p">,</span> <span class="n">data_args</span><span class="p">,</span> <span class="n">training_args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args_into_dataclasses</span><span class="p">()</span>
+
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">overwrite_output_dir</span><span class="p">:</span>
+		<span class="n">Path</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+	<span class="c1"># Setup logging</span>
+	<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+		<span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+		<span class="n">datefmt</span><span class="o">=</span><span class="s2">&quot;%m/</span><span class="si">%d</span><span class="s2">/%Y %H:%M:%S&quot;</span><span class="p">,</span>
+		<span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)],</span>
+	<span class="p">)</span>
+
+	<span class="n">log_level</span> <span class="o">=</span> <span class="n">training_args</span><span class="o">.</span><span class="n">get_process_log_level</span><span class="p">()</span>
+	<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+	<span class="n">datasets</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+	<span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+	<span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">enable_default_handler</span><span class="p">()</span>
+	<span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">enable_explicit_format</span><span class="p">()</span>
+
+	<span class="c1"># Log on each process the small summary:</span>
+	<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+		<span class="sa">f</span><span class="s2">&quot;Process rank: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">local_rank</span><span class="si">}</span><span class="s2">, device: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">, n_gpu: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">n_gpu</span><span class="si">}</span><span class="s2">&quot;</span>
+		<span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;distributed training: </span><span class="si">{</span><span class="nb">bool</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">local_rank</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">, 16-bits training: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">fp16</span><span class="si">}</span><span class="s2">&quot;</span>
+	<span class="p">)</span>
+	<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training/evaluation parameters </span><span class="si">{</span><span class="n">training_args</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+	<span class="c1"># Detecting last checkpoint.</span>
+	<span class="n">last_checkpoint</span> <span class="o">=</span> <span class="kc">None</span>
+	<span class="k">if</span> <span class="p">(</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
+		<span class="ow">and</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span>
+		<span class="ow">and</span> <span class="ow">not</span> <span class="n">training_args</span><span class="o">.</span><span class="n">overwrite_output_dir</span>
+	<span class="p">):</span>
+		<span class="n">last_checkpoint</span> <span class="o">=</span> <span class="n">get_last_checkpoint</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">last_checkpoint</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+				<span class="sa">f</span><span class="s2">&quot;Output directory (</span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">) already exists and is not empty. &quot;</span>
+				<span class="s2">&quot;Use --overwrite_output_dir to overcome.&quot;</span>
+			<span class="p">)</span>
+		<span class="k">elif</span> <span class="p">(</span>
+			<span class="n">last_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">training_args</span><span class="o">.</span><span class="n">resume_from_checkpoint</span> <span class="ow">is</span> <span class="kc">None</span>
+		<span class="p">):</span>
+			<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+				<span class="sa">f</span><span class="s2">&quot;Checkpoint detected, resuming training at </span><span class="si">{</span><span class="n">last_checkpoint</span><span class="si">}</span><span class="s2">. To avoid this behavior, change &quot;</span>
+				<span class="s2">&quot;the `--output_dir` or add `--overwrite_output_dir` to train from scratch.&quot;</span>
+			<span class="p">)</span>
+
+	<span class="c1"># Set seed before initializing model.</span>
+	<span class="n">set_seed</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+	<span class="c1"># Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)</span>
+	<span class="c1"># or just provide the name of one of the public datasets available on the hub at https://huggingface.co/datasets/</span>
+	<span class="c1"># (the dataset will be downloaded automatically from the datasets Hub).</span>
+	<span class="c1">#</span>
+	<span class="c1"># For CSV/JSON files, this script will use the column called &#39;text&#39; or the first column if no column called</span>
+	<span class="c1"># &#39;text&#39; is found. You can easily tweak this behavior (see below).</span>
+	<span class="c1">#</span>
+	<span class="c1"># In distributed training, the load_dataset function guarantee that only one local process can concurrently</span>
+	<span class="c1"># download the dataset.</span>
+	<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+		<span class="c1"># Downloading and loading a dataset from the hub.</span>
+		<span class="n">raw_datasets</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+			<span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span><span class="p">,</span>
+			<span class="n">data_args</span><span class="o">.</span><span class="n">dataset_config_name</span><span class="p">,</span>
+			<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+		<span class="p">)</span>
+		<span class="k">if</span> <span class="s2">&quot;validation&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+			<span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;validation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+				<span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span><span class="p">,</span>
+				<span class="n">data_args</span><span class="o">.</span><span class="n">dataset_config_name</span><span class="p">,</span>
+				<span class="n">split</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;train[:</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">validation_split_percentage</span><span class="si">}</span><span class="s2">%]&quot;</span><span class="p">,</span>
+				<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+			<span class="p">)</span>
+			<span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+				<span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span><span class="p">,</span>
+				<span class="n">data_args</span><span class="o">.</span><span class="n">dataset_config_name</span><span class="p">,</span>
+				<span class="n">split</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;train[</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">validation_split_percentage</span><span class="si">}</span><span class="s2">%:]&quot;</span><span class="p">,</span>
+				<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+			<span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">data_files</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dataset_args</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">data_files</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">validation_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">data_files</span><span class="p">[</span><span class="s2">&quot;validation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">validation_file</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">data_files</span><span class="p">[</span><span class="s2">&quot;test&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span>
+
+		<span class="n">extension</span> <span class="o">=</span> <span class="p">(</span>
+			<span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+			<span class="k">else</span> <span class="n">data_args</span><span class="o">.</span><span class="n">validation_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+		<span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">extension</span> <span class="o">==</span> <span class="s2">&quot;txt&quot;</span><span class="p">:</span>
+			<span class="n">extension</span> <span class="o">=</span> <span class="s2">&quot;text&quot;</span>
+			<span class="n">dataset_args</span><span class="p">[</span><span class="s2">&quot;keep_linebreaks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">keep_linebreaks</span>
+
+		<span class="n">raw_datasets</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+			<span class="n">extension</span><span class="p">,</span>
+			<span class="n">data_files</span><span class="o">=</span><span class="n">data_files</span><span class="p">,</span>
+			<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+			<span class="o">**</span><span class="n">dataset_args</span><span class="p">,</span>
+		<span class="p">)</span>
+		<span class="c1"># If no validation data is there, validation_split_percentage will be used to divide the dataset.</span>
+		<span class="k">if</span> <span class="s2">&quot;validation&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+			<span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;validation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+				<span class="n">extension</span><span class="p">,</span>
+				<span class="n">data_files</span><span class="o">=</span><span class="n">data_files</span><span class="p">,</span>
+				<span class="n">split</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;train[:</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">validation_split_percentage</span><span class="si">}</span><span class="s2">%]&quot;</span><span class="p">,</span>
+				<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+				<span class="o">**</span><span class="n">dataset_args</span><span class="p">,</span>
+			<span class="p">)</span>
+			<span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+				<span class="n">extension</span><span class="p">,</span>
+				<span class="n">data_files</span><span class="o">=</span><span class="n">data_files</span><span class="p">,</span>
+				<span class="n">split</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;train[</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">validation_split_percentage</span><span class="si">}</span><span class="s2">%:]&quot;</span><span class="p">,</span>
+				<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+				<span class="o">**</span><span class="n">dataset_args</span><span class="p">,</span>
+			<span class="p">)</span>
+
+	<span class="c1"># See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at</span>
+	<span class="c1"># https://huggingface.co/docs/datasets/loading_datasets.html.</span>
+
+	<span class="c1"># Load pretrained model and tokenizer</span>
+	<span class="c1">#</span>
+	<span class="c1"># Distributed training:</span>
+	<span class="c1"># The .from_pretrained methods guarantee that only one local process can concurrently</span>
+	<span class="c1"># download model &amp; vocab.</span>
+
+	<span class="n">config_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="s2">&quot;cache_dir&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+		<span class="s2">&quot;revision&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_revision</span><span class="p">,</span>
+		<span class="s2">&quot;use_auth_token&quot;</span><span class="p">:</span> <span class="kc">True</span> <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">use_auth_token</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">config_name</span><span class="p">:</span>
+		<span class="n">config</span> <span class="o">=</span> <span class="n">AutoConfig</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_args</span><span class="o">.</span><span class="n">config_name</span><span class="p">,</span> <span class="o">**</span><span class="n">config_kwargs</span><span class="p">)</span>
+	<span class="k">elif</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">:</span>
+		<span class="n">config</span> <span class="o">=</span> <span class="n">AutoConfig</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+			<span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span> <span class="o">**</span><span class="n">config_kwargs</span>
+		<span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">config</span> <span class="o">=</span> <span class="n">CONFIG_MAPPING</span><span class="p">[</span><span class="n">model_args</span><span class="o">.</span><span class="n">model_type</span><span class="p">]()</span>
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;You are instantiating a new config instance from scratch.&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">config_overrides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overriding config: </span><span class="si">{</span><span class="n">model_args</span><span class="o">.</span><span class="n">config_overrides</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+			<span class="n">config</span><span class="o">.</span><span class="n">update_from_string</span><span class="p">(</span><span class="n">model_args</span><span class="o">.</span><span class="n">config_overrides</span><span class="p">)</span>
+			<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;New config: </span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+	<span class="n">tokenizer_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="s2">&quot;cache_dir&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+		<span class="s2">&quot;use_fast&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">use_fast_tokenizer</span><span class="p">,</span>
+		<span class="s2">&quot;revision&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_revision</span><span class="p">,</span>
+		<span class="s2">&quot;use_auth_token&quot;</span><span class="p">:</span> <span class="kc">True</span> <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">use_auth_token</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">tokenizer_name</span><span class="p">:</span>
+		<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+			<span class="n">model_args</span><span class="o">.</span><span class="n">tokenizer_name</span><span class="p">,</span> <span class="o">**</span><span class="n">tokenizer_kwargs</span>
+		<span class="p">)</span>
+	<span class="k">elif</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">:</span>
+		<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+			<span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span> <span class="o">**</span><span class="n">tokenizer_kwargs</span>
+		<span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+			<span class="s2">&quot;You are instantiating a new tokenizer from scratch. This is not supported by this script.&quot;</span>
+			<span class="s2">&quot;You can do it from another script, save it, and load it from here, using --tokenizer_name.&quot;</span>
+		<span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">:</span>
+		<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForMaskedLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+			<span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span>
+			<span class="n">from_tf</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="s2">&quot;.ckpt&quot;</span> <span class="ow">in</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">),</span>
+			<span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+			<span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+			<span class="n">revision</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">model_revision</span><span class="p">,</span>
+			<span class="n">use_auth_token</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">use_auth_token</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+		<span class="p">)</span>
+
+		<span class="n">n_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+			<span class="nb">dict</span><span class="p">((</span><span class="n">p</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+		<span class="p">)</span>
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total parameters in the model =</span><span class="si">{</span><span class="n">n_params</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">M params&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">freeze_token_embed</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+				<span class="k">if</span> <span class="s2">&quot;word_embedding&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+					<span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+		<span class="n">n_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+			<span class="nb">dict</span><span class="p">(</span>
+				<span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span>
+				<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+				<span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">==</span> <span class="kc">True</span>
+			<span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+		<span class="p">)</span>
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+			<span class="sa">f</span><span class="s2">&quot;Training new model from scratch - Total size = </span><span class="si">{</span><span class="n">n_params</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">M params&quot;</span>
+		<span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForMaskedLM</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+		<span class="n">n_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+			<span class="nb">dict</span><span class="p">((</span><span class="n">p</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+		<span class="p">)</span>
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total parameters in the model = </span><span class="si">{</span><span class="n">n_params</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">M params&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">freeze_token_embed</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+				<span class="k">if</span> <span class="s2">&quot;word_embedding&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+					<span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+		<span class="n">n_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+			<span class="nb">dict</span><span class="p">(</span>
+				<span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span>
+				<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+				<span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">==</span> <span class="kc">True</span>
+			<span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+		<span class="p">)</span>
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+			<span class="sa">f</span><span class="s2">&quot;Training new model from scratch : Total size = </span><span class="si">{</span><span class="n">n_params</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">M params&quot;</span>
+		<span class="p">)</span>
+
+	<span class="n">model</span><span class="o">.</span><span class="n">resize_token_embeddings</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">))</span>
+
+	<span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">freeze_token_embed</span><span class="p">:</span>
+		<span class="k">assert</span> <span class="n">model_args</span><span class="o">.</span><span class="n">pretrained_token_embed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+			<span class="s2">&quot;Reading pre-trained token embeddings from </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+				<span class="n">model_args</span><span class="o">.</span><span class="n">pretrained_token_embed</span>
+			<span class="p">)</span>
+		<span class="p">)</span>
+		<span class="n">embeddings</span><span class="p">,</span> <span class="n">word2id</span><span class="p">,</span> <span class="n">id2word</span> <span class="o">=</span> <span class="n">read_txt_embeddings</span><span class="p">(</span>
+			<span class="n">model_args</span><span class="o">.</span><span class="n">pretrained_token_embed</span>
+		<span class="p">)</span>
+
+		<span class="n">param_name</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+			<span class="k">if</span> <span class="s2">&quot;word_embedding&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+				<span class="n">param_name</span> <span class="o">=</span> <span class="n">param</span>
+
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+			<span class="s2">&quot;Embedding dimension is </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+				<span class="n">model</span><span class="o">.</span><span class="n">bert</span><span class="o">.</span><span class="n">embeddings</span><span class="o">.</span><span class="n">word_embeddings</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+			<span class="p">)</span>
+		<span class="p">)</span>
+
+		<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+			<span class="k">for</span> <span class="n">every_word</span> <span class="ow">in</span> <span class="n">word2id</span><span class="p">:</span>
+				<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">encode</span><span class="p">([</span><span class="n">every_word</span><span class="p">],</span> <span class="n">add_special_tokens</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+					<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+						<span class="n">every_word</span>
+						<span class="o">+</span> <span class="s2">&quot; is split into multiple sub-words instead of one &quot;</span>
+						<span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">encode</span><span class="p">([</span><span class="n">every_word</span><span class="p">],</span> <span class="n">add_special_tokens</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+					<span class="p">)</span>
+					<span class="n">exit</span><span class="p">()</span>
+
+				<span class="n">pre_trained_embed_index</span> <span class="o">=</span> <span class="n">word2id</span><span class="p">[</span><span class="n">every_word</span><span class="p">]</span>
+				<span class="n">bert_embedding_index</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span>
+					<span class="p">[</span><span class="n">every_word</span><span class="p">],</span> <span class="n">add_special_tokens</span><span class="o">=</span><span class="kc">False</span>
+				<span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+				<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">BertForMaskedLM</span><span class="p">):</span>
+					<span class="n">model</span><span class="o">.</span><span class="n">bert</span><span class="o">.</span><span class="n">embeddings</span><span class="o">.</span><span class="n">word_embeddings</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span>
+						<span class="n">bert_embedding_index</span>
+					<span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">embeddings</span><span class="p">[</span><span class="n">pre_trained_embed_index</span><span class="p">])</span><span class="o">.</span><span class="n">to</span><span class="p">(</span>
+						<span class="n">model</span><span class="o">.</span><span class="n">bert</span><span class="o">.</span><span class="n">embeddings</span><span class="o">.</span><span class="n">word_embeddings</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">device</span>
+					<span class="p">)</span>
+
+	<span class="c1"># Preprocessing the datasets.</span>
+	<span class="c1"># First we tokenize all the texts.</span>
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span><span class="p">:</span>
+		<span class="n">column_names</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">column_names</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">column_names</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;validation&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">column_names</span>
+	<span class="n">text_column_name</span> <span class="o">=</span> <span class="s2">&quot;text&quot;</span> <span class="k">if</span> <span class="s2">&quot;text&quot;</span> <span class="ow">in</span> <span class="n">column_names</span> <span class="k">else</span> <span class="n">column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+	<span class="c1"># since this will be pickled to avoid _LazyModule error in Hasher force logger loading before tokenize_function</span>
+	<span class="n">tok_logger</span> <span class="o">=</span> <span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span>
+		<span class="s2">&quot;transformers.tokenization_utils_base&quot;</span>
+	<span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+		<span class="n">max_seq_length</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span>
+		<span class="k">if</span> <span class="n">max_seq_length</span> <span class="o">&gt;</span> <span class="mi">512</span><span class="p">:</span>
+			<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+				<span class="sa">f</span><span class="s2">&quot;The tokenizer picked seems to have a very large `model_max_length` (</span><span class="si">{</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="si">}</span><span class="s2">). &quot;</span>
+				<span class="s2">&quot;Picking 512 instead. You can change that default value by passing --max_seq_length xxx.&quot;</span>
+			<span class="p">)</span>
+			<span class="n">max_seq_length</span> <span class="o">=</span> <span class="mi">512</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span> <span class="o">&gt;</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="p">:</span>
+			<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+				<span class="sa">f</span><span class="s2">&quot;The max_seq_length passed (</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span><span class="si">}</span><span class="s2">) is larger than the maximum length for the&quot;</span>
+				<span class="sa">f</span><span class="s2">&quot;model (</span><span class="si">{</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="si">}</span><span class="s2">). Using max_seq_length=</span><span class="si">{</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="si">}</span><span class="s2">.&quot;</span>
+			<span class="p">)</span>
+		<span class="n">max_seq_length</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">line_by_line</span><span class="p">:</span>
+		<span class="c1"># When using line_by_line, we just tokenize each nonempty line.</span>
+		<span class="n">padding</span> <span class="o">=</span> <span class="s2">&quot;max_length&quot;</span> <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">pad_to_max_length</span> <span class="k">else</span> <span class="kc">False</span>
+		<span class="k">if</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">pad_token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">tokenizer</span><span class="o">.</span><span class="n">add_special_tokens</span><span class="p">({</span><span class="s2">&quot;pad_token&quot;</span><span class="p">:</span> <span class="s2">&quot;[PAD]&quot;</span><span class="p">})</span>
+			<span class="n">config</span><span class="o">.</span><span class="n">pad_token_id</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">pad_token_id</span>
+
+			<span class="n">model</span><span class="o">.</span><span class="n">resize_token_embeddings</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">))</span>
+
+		<span class="k">def</span> <span class="nf">tokenize_line_by_line</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
+			<span class="c1"># Remove empty lines</span>
+
+			<span class="n">examples</span><span class="p">[</span><span class="n">text_column_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+				<span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;\s\s+&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+				<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">[</span><span class="n">text_column_name</span><span class="p">]</span>
+				<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
+				<span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">isspace</span><span class="p">())</span>
+				<span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="p">]</span>
+
+			<span class="n">tokenized_dataset</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">(</span>
+				<span class="n">examples</span><span class="p">[</span><span class="n">text_column_name</span><span class="p">],</span>
+				<span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+				<span class="n">truncation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+				<span class="n">max_length</span><span class="o">=</span><span class="n">max_seq_length</span><span class="p">,</span>
+				<span class="c1"># We use this option because DataCollatorForLanguageModeling (see below) is more efficient when it</span>
+				<span class="c1"># receives the `special_tokens_mask`.</span>
+				<span class="n">return_special_tokens_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+			<span class="p">)</span>
+
+			<span class="k">return</span> <span class="n">tokenized_dataset</span>
+
+		<span class="k">with</span> <span class="n">training_args</span><span class="o">.</span><span class="n">main_process_first</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;dataset map tokenization&quot;</span><span class="p">):</span>
+			<span class="n">tokenized_datasets</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+				<span class="n">tokenize_line_by_line</span><span class="p">,</span>
+				<span class="n">batched</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+				<span class="n">num_proc</span><span class="o">=</span><span class="n">data_args</span><span class="o">.</span><span class="n">preprocessing_num_workers</span><span class="p">,</span>
+				<span class="n">remove_columns</span><span class="o">=</span><span class="p">[</span><span class="n">text_column_name</span><span class="p">],</span>
+				<span class="n">load_from_cache_file</span><span class="o">=</span><span class="ow">not</span> <span class="n">data_args</span><span class="o">.</span><span class="n">overwrite_cache</span><span class="p">,</span>
+				<span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Running tokenizer on dataset line_by_line&quot;</span><span class="p">,</span>
+			<span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="c1"># Otherwise, we tokenize every text, then concatenate them together before splitting them in smaller parts.</span>
+		<span class="c1"># We use `return_special_tokens_mask=True` because DataCollatorForLanguageModeling (see below) is more</span>
+		<span class="c1"># efficient when it receives the `special_tokens_mask`.</span>
+		<span class="k">def</span> <span class="nf">tokenize_function_block</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
+			<span class="k">return</span> <span class="n">tokenizer</span><span class="p">(</span>
+				<span class="n">examples</span><span class="p">[</span><span class="n">text_column_name</span><span class="p">],</span> <span class="n">return_special_tokens_mask</span><span class="o">=</span><span class="kc">True</span>
+			<span class="p">)</span>
+
+		<span class="k">with</span> <span class="n">training_args</span><span class="o">.</span><span class="n">main_process_first</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;dataset map tokenization&quot;</span><span class="p">):</span>
+			<span class="n">tokenized_datasets_pre_group</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+				<span class="n">tokenize_function_block</span><span class="p">,</span>
+				<span class="n">batched</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+				<span class="n">num_proc</span><span class="o">=</span><span class="n">data_args</span><span class="o">.</span><span class="n">preprocessing_num_workers</span><span class="p">,</span>
+				<span class="n">remove_columns</span><span class="o">=</span><span class="n">column_names</span><span class="p">,</span>
+				<span class="n">load_from_cache_file</span><span class="o">=</span><span class="ow">not</span> <span class="n">data_args</span><span class="o">.</span><span class="n">overwrite_cache</span><span class="p">,</span>
+				<span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Running tokenizer on every text in dataset&quot;</span><span class="p">,</span>
+			<span class="p">)</span>
+
+		<span class="c1"># Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.</span>
+		<span class="k">def</span> <span class="nf">group_texts_by_block</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
+			<span class="c1"># Concatenate all texts.</span>
+			<span class="n">concatenated_examples</span> <span class="o">=</span> <span class="p">{</span>
+				<span class="n">k</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="n">examples</span><span class="p">[</span><span class="n">k</span><span class="p">]))</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">examples</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+			<span class="p">}</span>
+			<span class="n">total_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">concatenated_examples</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">examples</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]])</span>
+			<span class="c1"># We drop the small remainder, we could add padding if the model supported it instead of this drop, you can</span>
+			<span class="c1"># customize this part to your needs.</span>
+			<span class="k">if</span> <span class="n">total_length</span> <span class="o">&gt;=</span> <span class="n">max_seq_length</span><span class="p">:</span>
+				<span class="n">total_length</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_length</span> <span class="o">//</span> <span class="n">max_seq_length</span><span class="p">)</span> <span class="o">*</span> <span class="n">max_seq_length</span>
+			<span class="c1"># Split by chunks of max_len.</span>
+			<span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+				<span class="n">k</span><span class="p">:</span> <span class="p">[</span>
+					<span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">max_seq_length</span><span class="p">]</span>
+					<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_length</span><span class="p">,</span> <span class="n">max_seq_length</span><span class="p">)</span>
+				<span class="p">]</span>
+				<span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">concatenated_examples</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+			<span class="p">}</span>
+			<span class="k">return</span> <span class="n">result</span>
+
+		<span class="c1"># Note that with `batched=True`, this map processes 1,000 texts together, so group_texts throws away a</span>
+		<span class="c1"># remainder for each of those groups of 1,000 texts. You can adjust that batch_size here but a higher value</span>
+		<span class="c1"># might be slower to preprocess.</span>
+		<span class="c1">#</span>
+		<span class="c1"># To speed up this part, we use multiprocessing. See the documentation of the map method for more information:</span>
+		<span class="c1"># https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.map</span>
+
+		<span class="k">with</span> <span class="n">training_args</span><span class="o">.</span><span class="n">main_process_first</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;grouping texts together&quot;</span><span class="p">):</span>
+			<span class="n">tokenized_datasets</span> <span class="o">=</span> <span class="n">tokenized_datasets_pre_group</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+				<span class="n">group_texts_by_block</span><span class="p">,</span>
+				<span class="n">batched</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+				<span class="n">num_proc</span><span class="o">=</span><span class="n">data_args</span><span class="o">.</span><span class="n">preprocessing_num_workers</span><span class="p">,</span>
+				<span class="n">load_from_cache_file</span><span class="o">=</span><span class="ow">not</span> <span class="n">data_args</span><span class="o">.</span><span class="n">overwrite_cache</span><span class="p">,</span>
+				<span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Grouping texts in chunks of </span><span class="si">{</span><span class="n">max_seq_length</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+			<span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span><span class="p">:</span>
+		<span class="k">if</span> <span class="s2">&quot;train&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tokenized_datasets</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--do_train requires a train dataset&quot;</span><span class="p">)</span>
+		<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">tokenized_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span><span class="p">))</span>
+
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span><span class="p">:</span>
+		<span class="k">if</span> <span class="s2">&quot;validation&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tokenized_datasets</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--do_eval requires a validation dataset&quot;</span><span class="p">)</span>
+		<span class="n">eval_dataset</span> <span class="o">=</span> <span class="n">tokenized_datasets</span><span class="p">[</span><span class="s2">&quot;validation&quot;</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">eval_dataset</span> <span class="o">=</span> <span class="n">eval_dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span><span class="p">))</span>
+
+	<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+		<span class="n">test_dataset</span> <span class="o">=</span> <span class="n">tokenized_datasets</span><span class="p">[</span><span class="s2">&quot;test&quot;</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">test_dataset</span> <span class="o">=</span> <span class="n">test_dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span><span class="p">))</span>
+
+	<span class="c1"># Data collator</span>
+	<span class="c1"># This one will take care of randomly masking the tokens.</span>
+	<span class="n">pad_to_multiple_of_8</span> <span class="o">=</span> <span class="p">(</span>
+		<span class="n">data_args</span><span class="o">.</span><span class="n">line_by_line</span>
+		<span class="ow">and</span> <span class="n">training_args</span><span class="o">.</span><span class="n">fp16</span>
+		<span class="ow">and</span> <span class="ow">not</span> <span class="n">data_args</span><span class="o">.</span><span class="n">pad_to_max_length</span>
+	<span class="p">)</span>
+	<span class="n">data_collator</span> <span class="o">=</span> <span class="n">DataCollatorForLanguageModeling</span><span class="p">(</span>
+		<span class="n">tokenizer</span><span class="o">=</span><span class="n">tokenizer</span><span class="p">,</span>
+		<span class="n">mlm_probability</span><span class="o">=</span><span class="n">data_args</span><span class="o">.</span><span class="n">mlm_probability</span><span class="p">,</span>
+		<span class="n">pad_to_multiple_of</span><span class="o">=</span><span class="mi">8</span> <span class="k">if</span> <span class="n">pad_to_multiple_of_8</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+	<span class="p">)</span>
+
+	<span class="c1"># Initialize our Trainer</span>
+	<span class="n">trainer</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span>
+		<span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+		<span class="n">args</span><span class="o">=</span><span class="n">training_args</span><span class="p">,</span>
+		<span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span> <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+		<span class="n">eval_dataset</span><span class="o">=</span><span class="n">eval_dataset</span> <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+		<span class="n">tokenizer</span><span class="o">=</span><span class="n">tokenizer</span><span class="p">,</span>
+		<span class="n">data_collator</span><span class="o">=</span><span class="n">data_collator</span><span class="p">,</span>
+	<span class="p">)</span>
+
+	<span class="c1"># Training</span>
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span><span class="p">:</span>
+		<span class="n">checkpoint</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">resume_from_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">checkpoint</span> <span class="o">=</span> <span class="n">training_args</span><span class="o">.</span><span class="n">resume_from_checkpoint</span>
+		<span class="k">elif</span> <span class="n">last_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">checkpoint</span> <span class="o">=</span> <span class="n">last_checkpoint</span>
+
+		<span class="n">train_result</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">resume_from_checkpoint</span><span class="o">=</span><span class="n">checkpoint</span><span class="p">)</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">save_model</span><span class="p">()</span>  <span class="c1"># Saves the tokenizer too for easy upload</span>
+
+		<span class="n">metrics</span> <span class="o">=</span> <span class="n">train_result</span><span class="o">.</span><span class="n">metrics</span>
+
+		<span class="n">max_train_samples</span> <span class="o">=</span> <span class="p">(</span>
+			<span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span>
+			<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+			<span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
+		<span class="p">)</span>
+		<span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;train_samples&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_train_samples</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">))</span>
+
+		<span class="n">trainer</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">save_metrics</span><span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">save_state</span><span class="p">()</span>
+
+		<span class="n">tokenizer</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span> <span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span> <span class="p">)</span>
+
+	<span class="c1"># Evaluation</span>
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span><span class="p">:</span>
+		<span class="n">last_checkpoint</span> <span class="o">=</span> <span class="n">get_last_checkpoint</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
+		<span class="n">temp_model</span> <span class="o">=</span> <span class="n">AutoModelForMaskedLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">last_checkpoint</span><span class="p">)</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">temp_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;*** Evaluate ***&quot;</span><span class="p">)</span>
+
+		<span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">evaluate</span><span class="p">()</span>
+
+		<span class="n">max_eval_samples</span> <span class="o">=</span> <span class="p">(</span>
+			<span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span>
+			<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+			<span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">eval_dataset</span><span class="p">)</span>
+		<span class="p">)</span>
+		<span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;eval_samples&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_eval_samples</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">eval_dataset</span><span class="p">))</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">perplexity</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;eval_loss&quot;</span><span class="p">])</span>
+		<span class="k">except</span> <span class="ne">OverflowError</span><span class="p">:</span>
+			<span class="n">perplexity</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+		<span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;perplexity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">perplexity</span>
+
+		<span class="n">trainer</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="s2">&quot;eval&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">save_metrics</span><span class="p">(</span><span class="s2">&quot;eval&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+		<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;*** Evaluate on test set***&quot;</span><span class="p">)</span>
+
+		<span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">eval_dataset</span><span class="o">=</span><span class="n">test_dataset</span><span class="p">,</span> <span class="n">metric_key_prefix</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+
+		<span class="n">max_eval_samples</span> <span class="o">=</span> <span class="p">(</span>
+			<span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span>
+			<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+			<span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_dataset</span><span class="p">)</span>
+		<span class="p">)</span>
+		<span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;test_samples&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_eval_samples</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_dataset</span><span class="p">))</span>
+		<span class="k">try</span><span class="p">:</span>
+			<span class="n">perplexity</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;test_loss&quot;</span><span class="p">])</span>
+		<span class="k">except</span> <span class="ne">OverflowError</span><span class="p">:</span>
+			<span class="n">perplexity</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+		<span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;perplexity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">perplexity</span>
+
+		<span class="n">trainer</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">save_metrics</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">push_to_hub</span><span class="p">:</span>
+		<span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;finetuned_from&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span> <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="s2">&quot;fill-mask&quot;</span><span class="p">}</span>
+		<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;dataset_tags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span>
+			<span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">dataset_config_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;dataset_args&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">dataset_config_name</span>
+				<span class="n">kwargs</span><span class="p">[</span>
+					<span class="s2">&quot;dataset&quot;</span>
+				<span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">dataset_config_name</span><span class="si">}</span><span class="s2">&quot;</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">dataset_name</span>
+
+		<span class="n">trainer</span><span class="o">.</span><span class="n">push_to_hub</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;finetuned_from&quot;</span><span class="p">:</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span> <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="s2">&quot;fill-mask&quot;</span><span class="p">}</span>
+		<span class="n">trainer</span><span class="o">.</span><span class="n">create_model_card</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_mp_fn</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
+	<span class="c1"># For xla_spawn (TPUs)</span>
+	<span class="n">main</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+	<span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tejas Indulal Dhamecha, Rudra Murthy.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

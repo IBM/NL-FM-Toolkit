@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>run_seq &mdash; NL-FM-Toolkit  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NL-FM-Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html">Training a Tokenizer from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html#creating-model-configuration-file">Creating Model Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mlm_train.html">Training a Masked Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../clm_train.html">Training a Causal Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../token_classifier_train.html">Training a Sequence Labeler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sequence_classifier_train.html">Training a Sequence Classifier</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Scripts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/index.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NL-FM-Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">run_seq</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for run_seq</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># coding=utf-8</span>
+<span class="c1"># Copyright 2020 The HuggingFace Inc. team. All rights reserved.</span>
+<span class="c1"># Modifications copyright (C) 2022 IBM</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot; Finetuning the library models for sequence classification tasks.&quot;&quot;&quot;</span>
+<span class="c1"># You can also adapt this script on your own text classification task. Pointers for this are left as comments.</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">f1_score</span>
+
+<span class="kn">import</span> <span class="nn">datasets</span>
+<span class="kn">from</span> <span class="nn">datasets</span> <span class="kn">import</span> <span class="n">load_dataset</span><span class="p">,</span> <span class="n">load_metric</span>
+<span class="kn">from</span> <span class="nn">datasets</span> <span class="kn">import</span> <span class="n">features</span><span class="p">,</span> <span class="n">ClassLabel</span>
+
+<span class="kn">import</span> <span class="nn">transformers</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AutoConfig</span><span class="p">,</span>
+    <span class="n">AutoModelForSequenceClassification</span><span class="p">,</span>
+    <span class="n">AutoTokenizer</span><span class="p">,</span>
+    <span class="n">EarlyStoppingCallback</span><span class="p">,</span>
+    <span class="n">DataCollatorWithPadding</span><span class="p">,</span>
+    <span class="n">EvalPrediction</span><span class="p">,</span>
+    <span class="n">HfArgumentParser</span><span class="p">,</span>
+    <span class="n">PretrainedConfig</span><span class="p">,</span>
+    <span class="n">Trainer</span><span class="p">,</span>
+    <span class="n">TrainingArguments</span><span class="p">,</span>
+    <span class="n">default_data_collator</span><span class="p">,</span>
+    <span class="n">set_seed</span><span class="p">,</span>
+    <span class="n">IntervalStrategy</span><span class="p">,</span>
+    <span class="n">PreTrainedModel</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">transformers.trainer_utils</span> <span class="kn">import</span> <span class="n">get_last_checkpoint</span>
+<span class="kn">from</span> <span class="nn">transformers.utils</span> <span class="kn">import</span> <span class="n">check_min_version</span>
+<span class="kn">from</span> <span class="nn">transformers.utils.versions</span> <span class="kn">import</span> <span class="n">require_version</span>
+
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TOKENIZERS_PARALLELISM&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;false&quot;</span>
+
+<span class="c1"># Will error if the minimal version of Transformers is not installed. Remove at your own risks.</span>
+<span class="n">check_min_version</span><span class="p">(</span><span class="s2">&quot;4.10.0.dev0&quot;</span><span class="p">)</span>
+
+<span class="n">require_version</span><span class="p">(</span>
+    <span class="s2">&quot;datasets&gt;=1.8.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;To fix: pip install -r examples/pytorch/text-classification/requirements.txt&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">task_to_keys</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;cola&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="s2">&quot;mnli&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;premise&quot;</span><span class="p">,</span> <span class="s2">&quot;hypothesis&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;mrpc&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence1&quot;</span><span class="p">,</span> <span class="s2">&quot;sentence2&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;qnli&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;question&quot;</span><span class="p">,</span> <span class="s2">&quot;sentence&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;qqp&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;question1&quot;</span><span class="p">,</span> <span class="s2">&quot;question2&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;rte&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence1&quot;</span><span class="p">,</span> <span class="s2">&quot;sentence2&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;sst2&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="s2">&quot;stsb&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence1&quot;</span><span class="p">,</span> <span class="s2">&quot;sentence2&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;wnli&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence1&quot;</span><span class="p">,</span> <span class="s2">&quot;sentence2&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;sentiment&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;sentence&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="GOATTrainer"><a class="viewcode-back" href="../run_seq.html#run_seq.GOATTrainer">[docs]</a><span class="k">class</span> <span class="nc">GOATTrainer</span><span class="p">(</span><span class="n">Trainer</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Saving model checkpoint to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+        <span class="c1"># Save a trained model and configuration using `save_pretrained()`.</span>
+        <span class="c1"># They can then be reloaded using `from_pretrained()`</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Trainer.model appears to not be a PreTrainedModel&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+
+        <span class="c1"># Good practice: save your training arguments together with the trained model</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;training_args.bin&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;best_eval_f1&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">best_eval_f1</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate</span><span class="p">()</span>
+        <span class="n">goat_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">+</span> <span class="s2">&quot;/../GOAT/&quot;</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;GOAT Directory is </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">goat_dir</span><span class="p">))</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">goat_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Eval F1: New: </span><span class="si">{0}</span><span class="s2"> </span><span class="se">\t</span><span class="s2"> Best: </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">results</span><span class="p">[</span><span class="s2">&quot;eval_f1&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_eval_f1</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;eval_f1&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_eval_f1</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Found new GOAT&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">goat_dir</span><span class="p">):</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">goat_dir</span><span class="p">)</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">goat_dir</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">best_eval_f1</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;eval_f1&quot;</span><span class="p">]</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">goat_dir</span><span class="p">,</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.txt&quot;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Eval F1: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">best_eval_f1</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="DataTrainingArguments"><a class="viewcode-back" href="../run_seq.html#run_seq.DataTrainingArguments">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">DataTrainingArguments</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Arguments pertaining to what data we are going to input our model for training and eval.</span>
+
+<span class="sd">    Using `HfArgumentParser` we can turn this class</span>
+<span class="sd">    into argparse arguments to be able to specify them on</span>
+<span class="sd">    the command line.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">task_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The name of the task to train on: &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">task_to_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">dataset_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The name of the dataset to use (via the datasets library).&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">dataset_config_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The configuration name of the dataset to use (via the datasets library).&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">max_seq_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The maximum total input sequence length after tokenization. Sequences longer &quot;</span>
+            <span class="s2">&quot;than this will be truncated, sequences shorter will be padded.&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">overwrite_cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Overwrite the cached preprocessed datasets or not.&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">pad_to_max_length</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether to pad all samples to `max_seq_length`. &quot;</span>
+            <span class="s2">&quot;If False, will pad the samples dynamically when batching to the maximum length in the batch.&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">max_train_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;For debugging purposes or quicker training, truncate the number of training examples to this &quot;</span>
+            <span class="s2">&quot;value if set.&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">max_eval_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;For debugging purposes or quicker training, truncate the number of evaluation examples to this &quot;</span>
+            <span class="s2">&quot;value if set.&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">max_predict_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;For debugging purposes or quicker training, truncate the number of prediction examples to this &quot;</span>
+            <span class="s2">&quot;value if set.&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">train_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;A csv or a json file containing the training data.&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">validation_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;A csv or a json file containing the validation data.&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">test_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;A csv or a json file containing the test data.&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">task_to_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Unknown task, you should pick one in &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">task_to_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_file</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Need either a GLUE task, a training/validation file or a dataset name.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">train_extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="n">train_extension</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;json&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;txt&quot;</span><span class="p">,</span>
+            <span class="p">],</span> <span class="s2">&quot;`train_file` should be a csv or a json file.&quot;</span>
+            <span class="n">validation_extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">validation_extension</span> <span class="o">==</span> <span class="n">train_extension</span>
+            <span class="p">),</span> <span class="s2">&quot;`validation_file` should have the same extension (csv or json) as `train_file`.&quot;</span></div>
+
+
+<div class="viewcode-block" id="ModelArguments"><a class="viewcode-back" href="../run_seq.html#run_seq.ModelArguments">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">ModelArguments</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_name_or_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Path to pretrained model or model identifier from huggingface.co/models&quot;</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="n">config_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Pretrained config name or path if not the same as model_name&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">tokenizer_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Pretrained tokenizer name or path if not the same as model_name&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Where do you want to store the pretrained models downloaded from huggingface.co&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">use_fast_tokenizer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether to use one of the fast tokenizer (backed by the tokenizers library) or not.&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">model_revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;The specific model version to use (can be a branch name, tag name or commit id).&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">use_auth_token</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Will use the token generated when running `transformers-cli login` (necessary to use this script &quot;</span>
+            <span class="s2">&quot;with private models).&quot;</span>
+        <span class="p">},</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TaskArguments"><a class="viewcode-back" href="../run_seq.html#run_seq.TaskArguments">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">TaskArguments</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">task</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;name of taks: pos or ner&quot;</span><span class="p">})</span>
+    <span class="n">early_stop</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;help&quot;</span><span class="p">:</span> <span class="s2">&quot;Use early stopping &quot;</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../run_seq.html#run_seq.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="c1"># See all possible arguments in src/transformers/training_args.py</span>
+    <span class="c1"># or by passing the --help flag to this script.</span>
+    <span class="c1"># We now keep distinct sets of args, for a cleaner separation of concerns.</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">HfArgumentParser</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">ModelArguments</span><span class="p">,</span> <span class="n">DataTrainingArguments</span><span class="p">,</span> <span class="n">TrainingArguments</span><span class="p">,</span> <span class="n">TaskArguments</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.json&quot;</span><span class="p">):</span>
+        <span class="c1"># If we pass only one argument to the script and it&#39;s the path to a json file,</span>
+        <span class="c1"># let&#39;s parse it to get our arguments.</span>
+        <span class="n">model_args</span><span class="p">,</span> <span class="n">data_args</span><span class="p">,</span> <span class="n">training_args</span><span class="p">,</span> <span class="n">task_args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_json_file</span><span class="p">(</span>
+            <span class="n">json_file</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="p">(</span>
+            <span class="n">model_args</span><span class="p">,</span>
+            <span class="n">data_args</span><span class="p">,</span>
+            <span class="n">training_args</span><span class="p">,</span>
+            <span class="n">task_args</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args_into_dataclasses</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="c1"># Setup logging</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">datefmt</span><span class="o">=</span><span class="s2">&quot;%m/</span><span class="si">%d</span><span class="s2">/%Y %H:%M:%S&quot;</span><span class="p">,</span>
+        <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)],</span>
+    <span class="p">)</span>
+
+    <span class="n">log_level</span> <span class="o">=</span> <span class="n">training_args</span><span class="o">.</span><span class="n">get_process_log_level</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+    <span class="n">datasets</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+    <span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+    <span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">enable_default_handler</span><span class="p">()</span>
+    <span class="n">transformers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">enable_explicit_format</span><span class="p">()</span>
+
+    <span class="c1"># Log on each process the small summary:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Process rank: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">local_rank</span><span class="si">}</span><span class="s2">, device: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">, n_gpu: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">n_gpu</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;distributed training: </span><span class="si">{</span><span class="nb">bool</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">local_rank</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">, 16-bits training: </span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">fp16</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training/evaluation parameters </span><span class="si">{</span><span class="n">training_args</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Detecting last checkpoint.</span>
+    <span class="n">last_checkpoint</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span>
+        <span class="ow">and</span> <span class="ow">not</span> <span class="n">training_args</span><span class="o">.</span><span class="n">overwrite_output_dir</span>
+    <span class="p">):</span>
+        <span class="n">last_checkpoint</span> <span class="o">=</span> <span class="n">get_last_checkpoint</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">last_checkpoint</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Output directory (</span><span class="si">{</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">) already exists and is not empty. &quot;</span>
+                <span class="s2">&quot;Use --overwrite_output_dir to overcome.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">last_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">training_args</span><span class="o">.</span><span class="n">resume_from_checkpoint</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Checkpoint detected, resuming training at </span><span class="si">{</span><span class="n">last_checkpoint</span><span class="si">}</span><span class="s2">. To avoid this behavior, change &quot;</span>
+                <span class="s2">&quot;the `--output_dir` or add `--overwrite_output_dir` to train from scratch.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Set seed before initializing model.</span>
+    <span class="n">set_seed</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="c1"># Loading a dataset from your local files.</span>
+    <span class="c1"># CSV/JSON training and evaluation files are needed.</span>
+    <span class="n">data_files</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;train&quot;</span><span class="p">:</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span><span class="p">,</span>
+        <span class="s2">&quot;validation&quot;</span><span class="p">:</span> <span class="n">data_args</span><span class="o">.</span><span class="n">validation_file</span><span class="p">,</span>
+        <span class="s2">&quot;test&quot;</span><span class="p">:</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Get the test dataset: you can provide your own CSV/JSON test file (see below)</span>
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_predict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">train_extension</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">test_extension</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">test_extension</span> <span class="o">==</span> <span class="n">train_extension</span>
+            <span class="p">),</span> <span class="s2">&quot;`test_file` should have the same extension (csv or json) as `train_file`.&quot;</span>
+            <span class="n">data_files</span><span class="p">[</span><span class="s2">&quot;test&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need either a GLUE task or a test file for `do_predict`.&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_files</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;load a local file for </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">data_files</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.csv&quot;</span><span class="p">):</span>
+        <span class="c1"># Loading a dataset from local csv files</span>
+        <span class="n">raw_datasets</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+            <span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+            <span class="n">data_files</span><span class="o">=</span><span class="n">data_files</span><span class="p">,</span>
+            <span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+            <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">data_args</span><span class="o">.</span><span class="n">train_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.json&quot;</span><span class="p">):</span>
+        <span class="n">raw_datasets</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+            <span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">data_files</span><span class="o">=</span><span class="n">data_files</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Loading a dataset from local json files</span>
+        <span class="n">raw_datasets</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span>
+            <span class="s2">&quot;csv&quot;</span><span class="p">,</span>
+            <span class="n">data_files</span><span class="o">=</span><span class="n">data_files</span><span class="p">,</span>
+            <span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+            <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># See more about loading any type of standard or custom dataset at</span>
+    <span class="c1"># https://huggingface.co/docs/datasets/loading_datasets.html.</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">raw_datasets</span><span class="p">:</span>
+        <span class="n">raw_datasets</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">&quot;Label&quot;</span><span class="p">,</span> <span class="s2">&quot;labels&quot;</span><span class="p">)</span>
+        <span class="n">raw_datasets</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">class_encode_column</span><span class="p">(</span><span class="s2">&quot;labels&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Labels</span>
+    <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">is_regression</span> <span class="o">=</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="s2">&quot;stsb&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_regression</span><span class="p">:</span>
+            <span class="n">label_list</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">names</span>
+            <span class="n">num_labels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">label_list</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">num_labels</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Trying to have good defaults here, don&#39;t hesitate to tweak to your needs.</span>
+        <span class="n">is_regression</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;float64&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">is_regression</span><span class="p">:</span>
+            <span class="n">num_labels</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># A useful fast method:</span>
+            <span class="c1"># https://huggingface.co/docs/datasets/package_reference/main_classes.html#datasets.Dataset.unique</span>
+            <span class="n">label_list</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="s2">&quot;labels&quot;</span><span class="p">)</span>
+            <span class="n">label_list</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>  <span class="c1"># Let&#39;s sort it for determinism</span>
+            <span class="n">num_labels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">label_list</span><span class="p">)</span>
+
+    <span class="c1"># Load pretrained model and tokenizer</span>
+    <span class="c1">#</span>
+    <span class="c1"># In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently</span>
+    <span class="c1"># download model &amp; vocab.</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">AutoConfig</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+        <span class="n">model_args</span><span class="o">.</span><span class="n">config_name</span>
+        <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">config_name</span>
+        <span class="k">else</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span>
+        <span class="n">num_labels</span><span class="o">=</span><span class="n">num_labels</span><span class="p">,</span>
+        <span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+        <span class="n">revision</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">model_revision</span><span class="p">,</span>
+        <span class="n">use_auth_token</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">use_auth_token</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+        <span class="n">model_args</span><span class="o">.</span><span class="n">tokenizer_name</span>
+        <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">tokenizer_name</span>
+        <span class="k">else</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span>
+        <span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+        <span class="n">use_fast</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">use_fast_tokenizer</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+        <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">,</span>
+        <span class="n">from_tf</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="s2">&quot;.ckpt&quot;</span> <span class="ow">in</span> <span class="n">model_args</span><span class="o">.</span><span class="n">model_name_or_path</span><span class="p">),</span>
+        <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+        <span class="n">cache_dir</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span>
+        <span class="n">revision</span><span class="o">=</span><span class="n">model_args</span><span class="o">.</span><span class="n">model_revision</span><span class="p">,</span>
+        <span class="n">use_auth_token</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">model_args</span><span class="o">.</span><span class="n">use_auth_token</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">n_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+        <span class="nb">dict</span><span class="p">((</span><span class="n">p</span><span class="o">.</span><span class="n">data_ptr</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Fine-tuning existing model - Total size = </span><span class="si">{</span><span class="n">n_params</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">M params&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="n">sentence1_key</span><span class="p">,</span> <span class="n">sentence2_key</span> <span class="o">=</span> <span class="n">task_to_keys</span><span class="p">[</span><span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Task name is </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Sentence 1 key is </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sentence1_key</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Sentence 2 key is </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sentence2_key</span><span class="p">))</span>
+
+    <span class="c1"># Padding strategy</span>
+    <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">pad_to_max_length</span><span class="p">:</span>
+        <span class="n">padding</span> <span class="o">=</span> <span class="s2">&quot;max_length&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># We will pad later, dynamically at batch creation, to the max sequence length in each batch</span>
+        <span class="n">padding</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_regression</span><span class="p">:</span>
+        
+        <span class="n">label_to_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">label_to_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">features</span><span class="p">[</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str2int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">label_list</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">label_to_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">label2id</span> <span class="o">=</span> <span class="n">label_to_id</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">id2label</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">:</span> <span class="n">label</span> <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">label2id</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Label2id:&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">label2id</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;id2Label:&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">id2label</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span> <span class="o">&gt;</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The max_seq_length passed (</span><span class="si">{</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span><span class="si">}</span><span class="s2">) is larger than the maximum length for the&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;model (</span><span class="si">{</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="si">}</span><span class="s2">). Using max_seq_length=</span><span class="si">{</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">max_seq_length</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_seq_length</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">model_max_length</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">preprocess_function</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
+        <span class="c1"># Tokenize the texts</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">examples</span><span class="p">[</span><span class="n">sentence1_key</span><span class="p">],)</span>
+            <span class="k">if</span> <span class="n">sentence2_key</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="p">(</span><span class="n">examples</span><span class="p">[</span><span class="n">sentence1_key</span><span class="p">],</span> <span class="n">examples</span><span class="p">[</span><span class="n">sentence2_key</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="p">(</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="n">max_seq_length</span><span class="p">,</span> <span class="n">truncation</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">label_to_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;labels&quot;</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">[</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">with</span> <span class="n">training_args</span><span class="o">.</span><span class="n">main_process_first</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;dataset map pre-processing&quot;</span><span class="p">):</span>
+        <span class="n">raw_datasets</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+            <span class="n">preprocess_function</span><span class="p">,</span>
+            <span class="n">batched</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">load_from_cache_file</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Running tokenizer on dataset&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;train&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--do_train requires a train dataset&quot;</span><span class="p">)</span>
+        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="s2">&quot;validation&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span>
+            <span class="ow">and</span> <span class="s2">&quot;validation_matched&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--do_eval requires a validation dataset&quot;</span><span class="p">)</span>
+        <span class="n">eval_dataset</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span>
+            <span class="s2">&quot;validation_matched&quot;</span> <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="s2">&quot;mnli&quot;</span> <span class="k">else</span> <span class="s2">&quot;validation&quot;</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">eval_dataset</span> <span class="o">=</span> <span class="n">eval_dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">training_args</span><span class="o">.</span><span class="n">do_predict</span>
+        <span class="ow">or</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">or</span> <span class="n">data_args</span><span class="o">.</span><span class="n">test_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;test&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span> <span class="ow">and</span> <span class="s2">&quot;test_matched&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_datasets</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--do_predict requires a test dataset&quot;</span><span class="p">)</span>
+        <span class="n">predict_dataset</span> <span class="o">=</span> <span class="n">raw_datasets</span><span class="p">[</span>
+            <span class="s2">&quot;test_matched&quot;</span> <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="s2">&quot;mnli&quot;</span> <span class="k">else</span> <span class="s2">&quot;test&quot;</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_predict_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">predict_dataset</span> <span class="o">=</span> <span class="n">predict_dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+                <span class="nb">range</span><span class="p">(</span><span class="n">data_args</span><span class="o">.</span><span class="n">max_predict_samples</span><span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Log a few random samples from the training set:</span>
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)),</span> <span class="mi">3</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sample </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> of the training set: </span><span class="si">{</span><span class="n">train_dataset</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Get the metric function</span>
+    <span class="n">metric</span> <span class="o">=</span> <span class="n">load_metric</span><span class="p">(</span><span class="s2">&quot;f1&quot;</span><span class="p">)</span>
+
+    <span class="c1"># You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a</span>
+    <span class="c1"># predictions and label_ids field) and has to return a dictionary string to float.</span>
+    <span class="k">def</span> <span class="nf">compute_metrics</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="n">EvalPrediction</span><span class="p">):</span>
+        <span class="n">preds</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">predictions</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">p</span><span class="o">.</span><span class="n">predictions</span>
+        <span class="n">preds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_regression</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">predictions</span><span class="o">=</span><span class="n">preds</span><span class="p">,</span> <span class="n">references</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="s2">&quot;combined_score&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">elif</span> <span class="n">is_regression</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;mse&quot;</span><span class="p">:</span> <span class="p">((</span><span class="n">preds</span> <span class="o">-</span> <span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Accuracy: &quot;</span>
+                <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">preds</span> <span class="o">==</span> <span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;F1: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">f1_score</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">,</span> <span class="n">preds</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">&quot;macro&quot;</span><span class="p">)))</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">preds</span> <span class="o">==</span> <span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                <span class="s2">&quot;f1&quot;</span><span class="p">:</span> <span class="n">f1_score</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">,</span> <span class="n">preds</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">&quot;macro&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;micro f1&quot;</span><span class="p">:</span> <span class="n">f1_score</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">label_ids</span><span class="p">,</span> <span class="n">preds</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s2">&quot;micro&quot;</span><span class="p">),</span>
+            <span class="p">}</span>
+
+    <span class="c1"># Data collator will default to DataCollatorWithPadding, so we change it if we already did the padding.</span>
+    <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">pad_to_max_length</span><span class="p">:</span>
+        <span class="n">data_collator</span> <span class="o">=</span> <span class="n">default_data_collator</span>
+    <span class="k">elif</span> <span class="n">training_args</span><span class="o">.</span><span class="n">fp16</span><span class="p">:</span>
+        <span class="n">data_collator</span> <span class="o">=</span> <span class="n">DataCollatorWithPadding</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">pad_to_multiple_of</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">data_collator</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Initialize our Trainer</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Initializing Trainer&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">task_args</span><span class="o">.</span><span class="n">early_stop</span><span class="p">:</span>
+        <span class="n">early_stopping_callback</span> <span class="o">=</span> <span class="n">EarlyStoppingCallback</span><span class="p">(</span><span class="n">early_stopping_patience</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">training_args</span><span class="o">.</span><span class="n">metric_for_best_model</span> <span class="o">=</span> <span class="s2">&quot;eval_f1&quot;</span>
+        <span class="n">training_args</span><span class="o">.</span><span class="n">load_best_model_at_end</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">training_args</span><span class="o">.</span><span class="n">evaluation_strategy</span> <span class="o">=</span> <span class="n">IntervalStrategy</span><span class="o">.</span><span class="n">STEPS</span>
+        <span class="n">training_args</span><span class="o">.</span><span class="n">eval_steps</span> <span class="o">=</span> <span class="n">training_args</span><span class="o">.</span><span class="n">save_steps</span>
+        <span class="n">training_args</span><span class="o">.</span><span class="n">greater_is_better</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">GOATTrainer</span><span class="p">(</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="n">training_args</span><span class="p">,</span>
+            <span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span> <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">eval_dataset</span><span class="o">=</span><span class="n">eval_dataset</span> <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">compute_metrics</span><span class="o">=</span><span class="n">compute_metrics</span><span class="p">,</span>
+            <span class="n">tokenizer</span><span class="o">=</span><span class="n">tokenizer</span><span class="p">,</span>
+            <span class="n">data_collator</span><span class="o">=</span><span class="n">data_collator</span><span class="p">,</span>
+            <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">early_stopping_callback</span><span class="p">],</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">GOATTrainer</span><span class="p">(</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="n">training_args</span><span class="p">,</span>
+            <span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span> <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">eval_dataset</span><span class="o">=</span><span class="n">eval_dataset</span> <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">compute_metrics</span><span class="o">=</span><span class="n">compute_metrics</span><span class="p">,</span>
+            <span class="n">tokenizer</span><span class="o">=</span><span class="n">tokenizer</span><span class="p">,</span>
+            <span class="n">data_collator</span><span class="o">=</span><span class="n">data_collator</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Training</span>
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_train</span><span class="p">:</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">resume_from_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">training_args</span><span class="o">.</span><span class="n">resume_from_checkpoint</span>
+        <span class="k">elif</span> <span class="n">last_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">last_checkpoint</span>
+        <span class="n">train_result</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">resume_from_checkpoint</span><span class="o">=</span><span class="n">checkpoint</span><span class="p">)</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">train_result</span><span class="o">.</span><span class="n">metrics</span>
+        <span class="n">max_train_samples</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span>
+            <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_train_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;train_samples&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_train_samples</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">))</span>
+
+        <span class="n">trainer</span><span class="o">.</span><span class="n">save_model</span><span class="p">()</span>  <span class="c1"># Saves the tokenizer too for easy upload</span>
+
+        <span class="n">trainer</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+        <span class="n">trainer</span><span class="o">.</span><span class="n">save_metrics</span><span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+        <span class="n">trainer</span><span class="o">.</span><span class="n">save_state</span><span class="p">()</span>
+
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
+
+    <span class="c1"># load the latest checkpoint</span>
+    <span class="n">checkpoints</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;GOAT&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">checkpoints</span><span class="p">):</span>
+        <span class="nb">dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">checkpoints</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">dir</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Loading from GOAT model </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">checkpoints</span><span class="p">))</span>
+            <span class="n">temp_model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">checkpoints</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Loading from model </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">))</span>
+            <span class="n">temp_model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+                <span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Loading from model </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">))</span>
+        <span class="n">temp_model</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+            <span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span>
+        <span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Copying weights from pre-trained model </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">trainer</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">temp_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_predict</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*** Predict ***&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Loop to handle MNLI double evaluation (matched, mis-matched)</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span><span class="p">]</span>
+        <span class="n">predict_datasets</span> <span class="o">=</span> <span class="p">[</span><span class="n">predict_dataset</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="s2">&quot;mnli&quot;</span><span class="p">:</span>
+            <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;mnli-mm&quot;</span><span class="p">)</span>
+            <span class="n">predict_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;test_mismatched&quot;</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">predict_dataset</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">predict_datasets</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
+            <span class="n">predict_dataset</span> <span class="o">=</span> <span class="n">predict_dataset</span><span class="o">.</span><span class="n">remove_columns</span><span class="p">(</span><span class="s2">&quot;labels&quot;</span><span class="p">)</span>
+            <span class="n">predictions</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+                <span class="n">predict_dataset</span><span class="p">,</span> <span class="n">metric_key_prefix</span><span class="o">=</span><span class="s2">&quot;predict&quot;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">predictions</span>
+            <span class="n">predictions</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">is_regression</span>
+                <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">output_predict_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;predict_results_</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">.txt&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">is_world_process_zero</span><span class="p">():</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_predict_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">writer</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;***** Predict results </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> *****&quot;</span><span class="p">)</span>
+                    <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;index</span><span class="se">\t</span><span class="s2">prediction</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">predictions</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">is_regression</span><span class="p">:</span>
+                            <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="se">\t</span><span class="si">{</span><span class="n">item</span><span class="si">:</span><span class="s2">3.3f</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">item</span> <span class="o">=</span> <span class="n">label_list</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+                            <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="se">\t</span><span class="si">{</span><span class="n">item</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Saving predictions</span>
+            <span class="n">output_test_predictions_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="n">training_args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;test_predictions.txt&quot;</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_test_predictions_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">writer</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">predictions</span><span class="p">:</span>
+                    <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">id2label</span><span class="p">[</span><span class="n">x</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">eval_dataset</span><span class="o">=</span><span class="n">predict_dataset</span><span class="p">)</span>
+
+            <span class="n">max_eval_samples</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span>
+                <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">predict_dataset</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;eval_samples&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_eval_samples</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">predict_dataset</span><span class="p">))</span>
+
+            <span class="n">trainer</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">save_metrics</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+
+    <span class="c1"># Evaluation</span>
+    <span class="k">if</span> <span class="n">training_args</span><span class="o">.</span><span class="n">do_eval</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*** Evaluate ***&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Loop to handle MNLI double evaluation (matched, mis-matched)</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span><span class="p">]</span>
+        <span class="n">eval_datasets</span> <span class="o">=</span> <span class="p">[</span><span class="n">eval_dataset</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">task_name</span> <span class="o">==</span> <span class="s2">&quot;mnli&quot;</span><span class="p">:</span>
+            <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;mnli-mm&quot;</span><span class="p">)</span>
+            <span class="n">eval_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">raw_datasets</span><span class="p">[</span><span class="s2">&quot;validation_mismatched&quot;</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">eval_dataset</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">eval_datasets</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">eval_dataset</span><span class="o">=</span><span class="n">eval_dataset</span><span class="p">)</span>
+
+            <span class="n">max_eval_samples</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span>
+                <span class="k">if</span> <span class="n">data_args</span><span class="o">.</span><span class="n">max_eval_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">eval_dataset</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;eval_samples&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_eval_samples</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">eval_dataset</span><span class="p">))</span>
+
+            <span class="n">trainer</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="s2">&quot;eval&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">save_metrics</span><span class="p">(</span><span class="s2">&quot;eval&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">metrics</span></div>
+
+
+<span class="k">def</span> <span class="nf">_mp_fn</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
+    <span class="c1"># For xla_spawn (TPUs)</span>
+    <span class="n">main</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tejas Indulal Dhamecha, Rudra Murthy.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

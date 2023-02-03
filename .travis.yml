@@ -1,0 +1,27 @@
+language: python
+
+python:
+  - "3.9.0"
+dist: xenial
+
+before_install:
+  - echo -e "machine github.com\n  login $GITHUB_TOKEN" >> ~/.netrc
+
+script:
+  - python src/tokenizer/train_tokenizer.py --input_file demo/data/lm/english_sample.txt --name demo/model/tokenizer/ --tokenizer_type wordpiece --vocab_size 500
+  - FILE=./demo/model/tokenizer/tokenizer.json; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+
+  - python src/tokenizer/create_config.py --path demo/model/tokenizer/ --type gpt2
+  - FILE=./demo/model/tokenizer/config.json; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+
+  - sh scripts/run_mlm_test.sh demo/data/lm/english_sample.txt demo/data/lm/english_sample.txt demo/model/mlm/ demo/model/tokenizer/ bert 16
+  - FILE=./demo/model/mlm/pytorch_model.bin; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+  - FILE=./demo/model/mlm/config.json; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+  - FILE=./demo/model/mlm/training_args.bin; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+
+  - sh scripts/run_clm_test.sh demo/data/lm/english_sample.txt demo/data/lm/english_sample.txt demo/model/clm/ demo/model/tokenizer/ gpt2 16
+  - FILE=./demo/model/clm/pytorch_model.bin; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+  - FILE=./demo/model/clm/config.json; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+  - FILE=./demo/model/clm/training_args.bin; if test -f "$FILE"; then echo "$FILE exist"; else echo "$FILE does not exist"; exit 1; fi
+
+  

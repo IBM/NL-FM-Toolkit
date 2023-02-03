@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training a Masked Language Model from Scratch &mdash; NL-FM-Toolkit  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Training a Causal Language Model from Scratch" href="clm_train.html" />
+    <link rel="prev" title="Training a Tokenizer from Scratch" href="tokenizer_train.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> NL-FM-Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tokenizer_train.html">Training a Tokenizer from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tokenizer_train.html#creating-model-configuration-file">Creating Model Configuration File</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Training a Masked Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clm_train.html">Training a Causal Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="token_classifier_train.html">Training a Sequence Labeler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sequence_classifier_train.html">Training a Sequence Classifier</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Scripts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/index.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">NL-FM-Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active">Training a Masked Language Model from Scratch</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/mlm_train.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="training-a-masked-language-model-from-scratch">
+<h1>Training a Masked Language Model from Scratch<a class="headerlink" href="#training-a-masked-language-model-from-scratch" title="Permalink to this heading"></a></h1>
+<p>We are now ready to train our own language model from scratch.</p>
+<p>We run the <code class="docutils literal notranslate"><span class="pre">scripts/run_mlm.sh</span></code> script script to train the model.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="nv">TRANSFORMERS_CACHE</span><span class="o">=</span>/tmp/ <span class="nv">PYTORCH_TRANSFORMERS_CACHE</span><span class="o">=</span>/tmp/ <span class="nv">PYTHONIOENCODING</span><span class="o">=</span>utf-8 python src/lm/run_mlm.py <span class="se">\</span>
+<span class="linenos"> 2</span>--model_type <span class="nv">$5</span> <span class="se">\</span>
+<span class="linenos"> 3</span>--tokenizer_name <span class="nv">$4</span> <span class="se">\</span>
+<span class="linenos"> 4</span>--per_device_train_batch_size <span class="m">8</span> <span class="se">\</span>
+<span class="linenos"> 5</span>--per_device_eval_batch_size <span class="m">8</span> <span class="se">\</span>
+<span class="linenos"> 6</span>--train_file <span class="nv">$1</span> <span class="se">\</span>
+<span class="linenos"> 7</span>--validation_file <span class="nv">$2</span> <span class="se">\</span>
+<span class="linenos"> 8</span>--remove_unused_columns False <span class="se">\</span>
+<span class="linenos"> 9</span>--preprocessing_num_workers <span class="nv">$6</span> <span class="se">\</span>
+<span class="linenos">10</span>--pad_to_max_length <span class="se">\</span>
+<span class="linenos">11</span>--line_by_line <span class="se">\</span>
+<span class="linenos">12</span>--do_train <span class="se">\</span>
+<span class="linenos">13</span>--do_eval <span class="se">\</span>
+<span class="linenos">14</span>--num_train_epochs <span class="m">1</span> <span class="se">\</span>
+<span class="linenos">15</span>--overwrite_output_dir <span class="se">\</span>
+<span class="linenos">16</span>--output_dir <span class="nv">$3</span> <span class="se">\</span>
+<span class="linenos">17</span>--report_to none <span class="se">\</span>
+<span class="linenos">18</span>--cache_dir /tmp/ <span class="se">\</span>
+<span class="linenos">19</span>--evaluation_strategy steps <span class="se">\</span>
+<span class="linenos">20</span>--logging_steps <span class="m">10000</span> <span class="se">\</span>
+<span class="linenos">21</span>--save_steps <span class="m">10000</span> <span class="se">\</span>
+<span class="linenos">22</span>--save_total_limit <span class="m">2</span>
+</pre></div>
+</div>
+<p>However, for testing we override the parameters and write to a new script file <code class="docutils literal notranslate"><span class="pre">scripts/run_mlm_test.sh</span></code>.
+This following argument reduces the model size to be able to train on a CPU system.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="nv">TRANSFORMERS_CACHE</span><span class="o">=</span>/tmp/ <span class="nv">PYTORCH_TRANSFORMERS_CACHE</span><span class="o">=</span>/tmp/ <span class="nv">PYTHONIOENCODING</span><span class="o">=</span>utf-8 python src/lm/run_mlm.py <span class="se">\</span>
+<span class="linenos"> 2</span>--model_type <span class="nv">$5</span> <span class="se">\</span>
+<span class="linenos"> 3</span>--tokenizer_name <span class="nv">$4</span> <span class="se">\</span>
+<span class="linenos"> 4</span>--config_overrides<span class="o">=</span><span class="s2">&quot;hidden_size=128,intermediate_size=512,num_attention_heads=4,num_hidden_layers=2,max_position_embeddings=512&quot;</span> <span class="se">\</span>
+<span class="linenos"> 5</span>--per_device_train_batch_size <span class="m">8</span> <span class="se">\</span>
+<span class="linenos"> 6</span>--per_device_eval_batch_size <span class="m">8</span> <span class="se">\</span>
+<span class="linenos"> 7</span>--train_file <span class="nv">$1</span> <span class="se">\</span>
+<span class="linenos"> 8</span>--validation_file <span class="nv">$2</span> <span class="se">\</span>
+<span class="linenos"> 9</span>--remove_unused_columns False <span class="se">\</span>
+<span class="linenos">10</span>--preprocessing_num_workers <span class="nv">$6</span> <span class="se">\</span>
+<span class="linenos">11</span>--pad_to_max_length <span class="se">\</span>
+<span class="linenos">12</span>--max_train_samples <span class="m">100</span> <span class="se">\</span>
+<span class="linenos">13</span>--max_eval_samples <span class="m">100</span> <span class="se">\</span>
+<span class="linenos">14</span>--line_by_line <span class="se">\</span>
+<span class="linenos">15</span>--do_train <span class="se">\</span>
+<span class="linenos">16</span>--do_eval <span class="se">\</span>
+<span class="linenos">17</span>--num_train_epochs <span class="m">1</span> <span class="se">\</span>
+<span class="linenos">18</span>--overwrite_output_dir <span class="se">\</span>
+<span class="linenos">19</span>--output_dir <span class="nv">$3</span> <span class="se">\</span>
+<span class="linenos">20</span>--report_to none <span class="se">\</span>
+<span class="linenos">21</span>--cache_dir /tmp/ <span class="se">\</span>
+<span class="linenos">22</span>--evaluation_strategy steps <span class="se">\</span>
+<span class="linenos">23</span>--logging_steps <span class="m">10</span> <span class="se">\</span>
+<span class="linenos">24</span>--save_steps <span class="m">10</span> <span class="se">\</span>
+<span class="linenos">25</span>--save_total_limit <span class="m">2</span>
+</pre></div>
+</div>
+<p>We now train the MLM with the test script file and share a snapshot of the training process</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="gp">$ </span>sh scripts/run_mlm_test.sh demo/data/lm/english_sample.txt demo/data/lm/english_sample.txt demo/model/mlm/ demo/model/tokenizer/ bert <span class="m">16</span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="go">04/07/2022 20:12:41 - WARNING - __main__ - You are instantiating a new config instance from scratch.</span>
+<span class="linenos"> 4</span><span class="go">04/07/2022 20:12:41 - WARNING - __main__ - Overriding config: hidden_size=128,intermediate_size=512,num_attention_heads=4,num_hidden_layers=4,max_position_embeddings=512</span>
+<span class="linenos"> 5</span><span class="go">04/07/2022 20:12:41 - WARNING - __main__ - New config: BertConfig {</span>
+<span class="linenos"> 6</span><span class="go">&quot;attention_probs_dropout_prob&quot;: 0.1,</span>
+<span class="linenos"> 7</span><span class="go">&quot;classifier_dropout&quot;: null,</span>
+<span class="linenos"> 8</span><span class="go">&quot;hidden_act&quot;: &quot;gelu&quot;,</span>
+<span class="linenos"> 9</span><span class="go">&quot;hidden_dropout_prob&quot;: 0.1,</span>
+<span class="linenos">10</span><span class="go">&quot;hidden_size&quot;: 128,</span>
+<span class="linenos">11</span><span class="go">&quot;initializer_range&quot;: 0.02,</span>
+<span class="linenos">12</span><span class="go">&quot;intermediate_size&quot;: 512,</span>
+<span class="linenos">13</span><span class="go">&quot;layer_norm_eps&quot;: 1e-12,</span>
+<span class="linenos">14</span><span class="go">&quot;max_position_embeddings&quot;: 512,</span>
+<span class="linenos">15</span><span class="go">&quot;model_type&quot;: &quot;bert&quot;,</span>
+<span class="linenos">16</span><span class="go">&quot;num_attention_heads&quot;: 4,</span>
+<span class="linenos">17</span><span class="go">&quot;num_hidden_layers&quot;: 4,</span>
+<span class="linenos">18</span><span class="go">&quot;pad_token_id&quot;: 0,</span>
+<span class="linenos">19</span><span class="go">&quot;position_embedding_type&quot;: &quot;absolute&quot;,</span>
+<span class="linenos">20</span><span class="go">&quot;transformers_version&quot;: &quot;4.14.0&quot;,</span>
+<span class="linenos">21</span><span class="go">&quot;type_vocab_size&quot;: 2,</span>
+<span class="linenos">22</span><span class="go">&quot;use_cache&quot;: true,</span>
+<span class="linenos">23</span><span class="go">&quot;vocab_size&quot;: 30522</span>
+<span class="linenos">24</span><span class="go">}</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="go">[INFO|tokenization_utils_base.py:1671] 2022-04-07 20:12:41,922 &gt;&gt; Didn&#39;t find file demo/model/tokenizer/vocab.json. We won&#39;t load it.</span>
+<span class="linenos">27</span><span class="go">[INFO|tokenization_utils_base.py:1671] 2022-04-07 20:12:41,922 &gt;&gt; Didn&#39;t find file demo/model/tokenizer/merges.txt. We won&#39;t load it.</span>
+<span class="linenos">28</span><span class="go">[INFO|tokenization_utils_base.py:1740] 2022-04-07 20:12:41,923 &gt;&gt; loading file None</span>
+<span class="linenos">29</span><span class="go">[INFO|tokenization_utils_base.py:1740] 2022-04-07 20:12:41,923 &gt;&gt; loading file None</span>
+<span class="linenos">30</span><span class="go">[INFO|tokenization_utils_base.py:1740] 2022-04-07 20:12:41,923 &gt;&gt; loading file demo/model/tokenizer/tokenizer.json</span>
+<span class="linenos">31</span><span class="go">[INFO|tokenization_utils_base.py:1740] 2022-04-07 20:12:41,923 &gt;&gt; loading file demo/model/tokenizer/added_tokens.json</span>
+<span class="linenos">32</span><span class="go">[INFO|tokenization_utils_base.py:1740] 2022-04-07 20:12:41,923 &gt;&gt; loading file demo/model/tokenizer/special_tokens_map.json</span>
+<span class="linenos">33</span><span class="go">[INFO|tokenization_utils_base.py:1740] 2022-04-07 20:12:41,923 &gt;&gt; loading file demo/model/tokenizer/tokenizer_config.json</span>
+<span class="linenos">34</span>
+<span class="linenos">35</span><span class="go">04/07/2022 20:12:42 - WARNING - __main__ - Total parameters in the model = 4.59M params</span>
+<span class="linenos">36</span><span class="go">04/07/2022 20:12:42 - WARNING - __main__ - Training new model from scratch : Total size = 4.59M params</span>
+<span class="linenos">37</span>
+<span class="linenos">38</span><span class="go">[INFO|trainer.py:1204] 2022-04-07 20:12:42,760 &gt;&gt; ***** Running training *****</span>
+<span class="linenos">39</span><span class="go">[INFO|trainer.py:1205] 2022-04-07 20:12:42,760 &gt;&gt;   Num examples = 1895</span>
+<span class="linenos">40</span><span class="go">[INFO|trainer.py:1206] 2022-04-07 20:12:42,760 &gt;&gt;   Num Epochs = 1</span>
+<span class="linenos">41</span><span class="go">[INFO|trainer.py:1207] 2022-04-07 20:12:42,760 &gt;&gt;   Instantaneous batch size per device = 8</span>
+<span class="linenos">42</span><span class="go">[INFO|trainer.py:1208] 2022-04-07 20:12:42,760 &gt;&gt;   Total train batch size (w. parallel, distributed &amp; accumulation) = 8</span>
+<span class="linenos">43</span><span class="go">[INFO|trainer.py:1209] 2022-04-07 20:12:42,760 &gt;&gt;   Gradient Accumulation steps = 1</span>
+<span class="linenos">44</span><span class="go">[INFO|trainer.py:1210] 2022-04-07 20:12:42,760 &gt;&gt;   Total optimization steps = 237</span>
+<span class="linenos">45</span>
+<span class="linenos">46</span><span class="go">{&#39;loss&#39;: 6.1333, &#39;learning_rate&#39;: 2.8902953586497894e-05, &#39;epoch&#39;: 0.42}</span>
+<span class="linenos">47</span><span class="go">{&#39;eval_loss&#39;: 6.023196220397949, &#39;eval_runtime&#39;: 132.1578, &#39;eval_samples_per_second&#39;: 14.339, &#39;eval_steps_per_second&#39;: 1.793, &#39;epoch&#39;: 0.42}</span>
+<span class="linenos">48</span><span class="go">{&#39;loss&#39;: 5.9755, &#39;learning_rate&#39;: 7.805907172995782e-06, &#39;epoch&#39;: 0.84}</span>
+<span class="linenos">49</span>
+<span class="linenos">50</span><span class="go">Training completed. Do not forget to share your model on huggingface.co/models =)</span>
+<span class="linenos">51</span>
+<span class="linenos">52</span><span class="go">{&#39;eval_loss&#39;: 5.97206974029541, &#39;eval_runtime&#39;: 81.7657, &#39;eval_samples_per_second&#39;: 23.176, &#39;eval_steps_per_second&#39;: 2.899, &#39;epoch&#39;: 0.84}</span>
+<span class="linenos">53</span><span class="go">{&#39;train_runtime&#39;: 533.2352, &#39;train_samples_per_second&#39;: 3.554, &#39;train_steps_per_second&#39;: 0.444, &#39;train_loss&#39;: 6.034984540335739, &#39;epoch&#39;: 1.0}</span>
+<span class="linenos">54</span><span class="go">***** train metrics *****</span>
+<span class="linenos">55</span><span class="go">epoch                    =        1.0</span>
+<span class="linenos">56</span><span class="go">train_loss               =      6.035</span>
+<span class="linenos">57</span><span class="go">train_runtime            = 0:08:53.23</span>
+<span class="linenos">58</span><span class="go">train_samples            =       1895</span>
+<span class="linenos">59</span><span class="go">train_samples_per_second =      3.554</span>
+<span class="linenos">60</span><span class="go">train_steps_per_second   =      0.444</span>
+<span class="linenos">61</span><span class="go">04/07/2022 20:27:27 - WARNING - __main__ - *** Evaluate ***</span>
+<span class="linenos">62</span><span class="go">{&#39;task&#39;: {&#39;name&#39;: &#39;Masked Language Modeling&#39;, &#39;type&#39;: &#39;fill-mask&#39;}}</span>
+<span class="linenos">63</span><span class="go">***** eval metrics *****</span>
+<span class="linenos">64</span><span class="go">epoch                   =        1.0</span>
+<span class="linenos">65</span><span class="go">eval_loss               =     5.9712</span>
+<span class="linenos">66</span><span class="go">eval_runtime            = 0:01:24.94</span>
+<span class="linenos">67</span><span class="go">eval_samples            =       1895</span>
+<span class="linenos">68</span><span class="go">eval_samples_per_second =     22.308</span>
+<span class="linenos">69</span><span class="go">eval_steps_per_second   =       2.79</span>
+<span class="linenos">70</span><span class="go">perplexity              =   391.9806</span>
+</pre></div>
+</div>
+<p>The trained model is present in the following folder and ready to fine-tune</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="gp">$ </span>ls demo/model/mlm/
+<span class="linenos"> 2</span><span class="go">README.md</span>
+<span class="linenos"> 3</span><span class="go">all_results.json</span>
+<span class="linenos"> 4</span><span class="go">added_tokens.json</span>
+<span class="linenos"> 5</span><span class="go">checkpoint-100/</span>
+<span class="linenos"> 6</span><span class="go">checkpoint-200/</span>
+<span class="linenos"> 7</span><span class="go">config.json</span>
+<span class="linenos"> 8</span><span class="go">eval_results.json</span>
+<span class="linenos"> 9</span><span class="go">pytorch_model.bin</span>
+<span class="linenos">10</span><span class="go">special_tokens_map.json</span>
+<span class="linenos">11</span><span class="go">tokenizer_config.json</span>
+<span class="linenos">12</span><span class="go">tokenizer.json</span>
+<span class="linenos">13</span><span class="go">trainer_state.json</span>
+<span class="linenos">14</span><span class="go">train_results.json</span>
+<span class="linenos">15</span><span class="go">training_args.bin</span>
+<span class="linenos">16</span><span class="go">vocab.txt</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tokenizer_train.html" class="btn btn-neutral float-left" title="Training a Tokenizer from Scratch" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="clm_train.html" class="btn btn-neutral float-right" title="Training a Causal Language Model from Scratch" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tejas Indulal Dhamecha, Rudra Murthy.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

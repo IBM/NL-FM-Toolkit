@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>train_tokenizer &mdash; NL-FM-Toolkit  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> NL-FM-Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html">Training a Tokenizer from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tokenizer_train.html#creating-model-configuration-file">Creating Model Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mlm_train.html">Training a Masked Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../clm_train.html">Training a Causal Language Model from Scratch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../token_classifier_train.html">Training a Sequence Labeler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sequence_classifier_train.html">Training a Sequence Classifier</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Scripts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/index.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NL-FM-Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">train_tokenizer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for train_tokenizer</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding=utf-8</span>
+<span class="c1"># Copyright (c) 2022, IBM.  All rights reserved.</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">Code to train a tokenizer on in-house corpus/corpora</span>
+
+<span class="sd">This code takes a corpus or corpora as input and trains a sub-word tokenizer using Huggingface Transformers Library.</span>
+<span class="sd">Optionally the code takes in a vocab file which contains words in it&#39;s own line and which shouldn&#39;t be split by the tokenizer.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">codecs</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">progressbar</span>
+<span class="kn">import</span> <span class="nn">tokenizers</span>
+<span class="kn">from</span> <span class="nn">tokenizers</span> <span class="kn">import</span> <span class="n">AddedToken</span><span class="p">,</span> <span class="n">Tokenizer</span><span class="p">,</span> <span class="n">trainers</span>
+<span class="kn">from</span> <span class="nn">tokenizers.decoders</span> <span class="kn">import</span> <span class="n">BPEDecoder</span>
+<span class="kn">from</span> <span class="nn">tokenizers.models</span> <span class="kn">import</span> <span class="n">BPE</span><span class="p">,</span> <span class="n">WordPiece</span>
+<span class="kn">from</span> <span class="nn">tokenizers.normalizers</span> <span class="kn">import</span> <span class="n">BertNormalizer</span>
+<span class="kn">from</span> <span class="nn">tokenizers.pre_tokenizers</span> <span class="kn">import</span> <span class="p">(</span><span class="n">CharDelimiterSplit</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Split</span><span class="p">,</span>
+                                       <span class="n">WhitespaceSplit</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">tokenizers.processors</span> <span class="kn">import</span> <span class="n">TemplateProcessing</span>
+
+
+<div class="viewcode-block" id="add_vocab_from_file"><a class="viewcode-back" href="../train_tokenizer.html#train_tokenizer.add_vocab_from_file">[docs]</a><span class="k">def</span> <span class="nf">add_vocab_from_file</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">vocab_file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function reads vocabulary from the file and adds the words to the trained tokenizer</span>
+<span class="sd">    The vocabulary file should contain every word in it&#39;s own line</span>
+<span class="sd">    The tokenizer will not split these words</span>
+
+<span class="sd">    :param tokenizer: this is the tokenizer we just trained, it could also be any pre-trained tokenizer</span>
+<span class="sd">    :type tokenizer: AutoTokenizer</span>
+
+<span class="sd">    :param vocab_file: vocabulary file containing word per line which need not be split into subwords</span>
+<span class="sd">    :type vocab_file: str</span>
+
+<span class="sd">    :return: None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vocabulary</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">bar</span> <span class="o">=</span> <span class="n">progressbar</span><span class="o">.</span><span class="n">ProgressBar</span><span class="p">(</span><span class="n">max_value</span><span class="o">=</span><span class="n">progressbar</span><span class="o">.</span><span class="n">UnknownLength</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">codecs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">vocab_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span><span class="p">:</span>
+        <span class="n">line_number</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f_in</span><span class="p">:</span>
+            <span class="n">line_number</span> <span class="o">=</span> <span class="n">line_number</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">bar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">line_number</span><span class="p">)</span>
+
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">token</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">vocabulary</span><span class="p">:</span>
+                        <span class="n">vocabulary</span><span class="p">[</span><span class="n">token</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">f_in</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">progressbar</span><span class="o">.</span><span class="n">progressbar</span><span class="p">(</span><span class="n">vocabulary</span><span class="p">):</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">add_tokens</span><span class="p">(</span><span class="n">AddedToken</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">single_word</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="get_command_line_args"><a class="viewcode-back" href="../train_tokenizer.html#train_tokenizer.get_command_line_args">[docs]</a><span class="k">def</span> <span class="nf">get_command_line_args</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Train a tokenizer from scratch&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--input_file&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;data/input.txt&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path to corpus/corpora on which the tokenizer has to be trained&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--name&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;models/byte_tokenizer&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path where the trained tokenizer will be saved&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--tokenizer_type&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;byte&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;type of tokenizer to be trained&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;byte&quot;</span><span class="p">,</span> <span class="s2">&quot;wordpiece&quot;</span><span class="p">],</span>
+    <span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--vocab_file&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;vocabulary file containing word per line which need not be split into subwords&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--vocab_size&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">30000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Vocabulary Size&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parser</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../train_tokenizer.html#train_tokenizer.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">get_command_line_args</span><span class="p">()</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="n">tokenizer_path</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">input_files</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">input_file</span>
+    <span class="k">if</span> <span class="s2">&quot;,&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">input_file</span><span class="p">:</span>
+        <span class="n">input_files</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">input_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">tokenizer_type</span> <span class="o">==</span> <span class="s2">&quot;byte&quot;</span><span class="p">:</span>
+        <span class="c1"># We build our custom Byte-level tokenizer:</span>
+        <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">(</span><span class="n">BPE</span><span class="p">(</span><span class="n">unk_token</span><span class="o">=</span><span class="s2">&quot;[UNK]&quot;</span><span class="p">))</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">pre_tokenizer</span> <span class="o">=</span> <span class="n">Sequence</span><span class="p">(</span> <span class="p">[</span><span class="n">WhitespaceSplit</span><span class="p">(),</span> <span class="n">CharDelimiterSplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">),</span> <span class="n">CharDelimiterSplit</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)]</span> <span class="p">)</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">normalizer</span> <span class="o">=</span> <span class="n">BertNormalizer</span><span class="p">(</span><span class="n">lowercase</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">clean_text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">BPEDecoder</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;&lt;/w&gt;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># We can train this tokenizer by giving it a list of path to text files:</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">trainers</span><span class="o">.</span><span class="n">BpeTrainer</span><span class="p">(</span>
+            <span class="n">special_tokens</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;[UNK]&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;s&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;/s&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;[PAD]&quot;</span><span class="p">,</span> <span class="s2">&quot;[MASK]&quot;</span><span class="p">],</span>
+            <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">vocab_size</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">vocab_size</span><span class="p">,</span>
+            <span class="n">end_of_word_suffix</span><span class="o">=</span><span class="s2">&quot;&lt;/w&gt;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_files</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">tokenizer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">files</span><span class="o">=</span><span class="n">input_files</span><span class="p">,</span> <span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tokenizer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">files</span><span class="o">=</span><span class="p">[</span><span class="n">input_files</span><span class="p">],</span> <span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">)</span>
+
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">post_processor</span> <span class="o">=</span> <span class="n">TemplateProcessing</span><span class="p">(</span>
+            <span class="n">single</span><span class="o">=</span><span class="s2">&quot;&lt;s&gt; $A &lt;/s&gt;&quot;</span><span class="p">,</span>
+            <span class="n">pair</span><span class="o">=</span><span class="s2">&quot;&lt;s&gt; $A &lt;/s&gt; &lt;s&gt;:1 $B:1 &lt;/s&gt;:1&quot;</span><span class="p">,</span>
+            <span class="n">special_tokens</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">(</span><span class="s2">&quot;&lt;s&gt;&quot;</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">token_to_id</span><span class="p">(</span><span class="s2">&quot;&lt;s&gt;&quot;</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s2">&quot;&lt;/s&gt;&quot;</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">token_to_id</span><span class="p">(</span><span class="s2">&quot;&lt;/s&gt;&quot;</span><span class="p">)),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">vocab_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">add_vocab_from_file</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">vocab_file</span><span class="p">)</span>
+
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tokenizer_path</span><span class="p">,</span> <span class="s2">&quot;tokenizer.json&quot;</span><span class="p">),</span> <span class="n">pretty</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">tokenizer_type</span> <span class="o">==</span> <span class="s2">&quot;wordpiece&quot;</span><span class="p">:</span>
+        <span class="c1"># We build our custom Wordpiece tokenizer:</span>
+        <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">(</span><span class="n">WordPiece</span><span class="p">(</span><span class="n">unk_token</span><span class="o">=</span><span class="s2">&quot;[UNK]&quot;</span><span class="p">))</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">pre_tokenizer</span> <span class="o">=</span> <span class="n">Sequence</span><span class="p">(</span> <span class="p">[</span><span class="n">WhitespaceSplit</span><span class="p">(),</span> <span class="n">CharDelimiterSplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">),</span> <span class="n">CharDelimiterSplit</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)]</span> <span class="p">)</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">normalizer</span> <span class="o">=</span> <span class="n">BertNormalizer</span><span class="p">(</span><span class="n">lowercase</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">clean_text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">tokenizers</span><span class="o">.</span><span class="n">decoders</span><span class="o">.</span><span class="n">WordPiece</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;&lt;/w&gt;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># We can train this tokenizer by giving it a list of path to text files:</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">trainers</span><span class="o">.</span><span class="n">WordPieceTrainer</span><span class="p">(</span>
+            <span class="n">special_tokens</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;[UNK]&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;s&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;/s&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;[PAD]&quot;</span><span class="p">,</span> <span class="s2">&quot;[MASK]&quot;</span><span class="p">],</span>
+            <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">vocab_size</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">vocab_size</span><span class="p">,</span>
+            <span class="n">continuing_subword_prefix</span><span class="o">=</span><span class="s2">&quot;&lt;/w&gt;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_files</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">tokenizer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">files</span><span class="o">=</span><span class="n">input_files</span><span class="p">,</span> <span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tokenizer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">files</span><span class="o">=</span><span class="p">[</span><span class="n">input_files</span><span class="p">],</span> <span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">)</span>
+
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">post_processor</span> <span class="o">=</span> <span class="n">TemplateProcessing</span><span class="p">(</span>
+            <span class="n">single</span><span class="o">=</span><span class="s2">&quot;&lt;s&gt; $A &lt;/s&gt;&quot;</span><span class="p">,</span>
+            <span class="n">pair</span><span class="o">=</span><span class="s2">&quot;&lt;s&gt; $A &lt;/s&gt; &lt;s&gt;:1 $B:1 &lt;/s&gt;:1&quot;</span><span class="p">,</span>
+            <span class="n">special_tokens</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">(</span><span class="s2">&quot;&lt;s&gt;&quot;</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">token_to_id</span><span class="p">(</span><span class="s2">&quot;&lt;s&gt;&quot;</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s2">&quot;&lt;/s&gt;&quot;</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">token_to_id</span><span class="p">(</span><span class="s2">&quot;&lt;/s&gt;&quot;</span><span class="p">)),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">vocab_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">add_vocab_from_file</span><span class="p">(</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">vocab_file</span><span class="p">)</span>
+
+        <span class="n">tokenizer</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tokenizer_path</span><span class="p">,</span> <span class="s2">&quot;tokenizer.json&quot;</span><span class="p">),</span> <span class="n">pretty</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+ 
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tejas Indulal Dhamecha, Rudra Murthy.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

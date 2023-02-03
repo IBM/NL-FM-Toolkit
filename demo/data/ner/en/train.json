@@ -1,0 +1,2 @@
+{"id": "0", "tokens": ["This", "is", "not", "Romeo", ",", "he\u2019s", "some", "other", "where."], "ner_tags": ["O", "O", "O", "B-PER", "O", "O", "O", "O", "O"]}
+{"id": "1", "tokens": ["Your", "plantain", "leaf", "is", "excellent", "for", "that."], "ner_tags": ["O", "O", "O", "O", "O", "O", "O"]}
