@@ -4,7 +4,7 @@ NL-FM-Toolkit stands for Natural Language - Foundation Model Toolkit. The repo c
 ## 🔬 Natural Language - Foundational Model - Toolkit
 
 
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://pages.github.com/IBM/NL-FM-Toolkit/)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://ibm.github.io/NL-FM-Toolkit/)
 ![Python](https://img.shields.io/badge/python-39)
 ![PyTorch](https://img.shields.io/badge/pytorch-PyTorch-green)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) 
@@ -28,8 +28,8 @@ The following models are supported for training language models
 
 ## 📚 Documentation
 
-- [API docs](https://pages.github.com/IBM/NL-FM-Toolkit/modules/index.html)
-- [Tutorial](https://pages.github.com/IBM/NL-FM-Toolkit/intro.html)
+- [API docs](https://ibm.github.io/NL-FM-Toolkit/modules/index.html)
+- [Tutorial](https://ibm.github.io/NL-FM-Toolkit/intro.html)
 
 ## ⏬ Installation
 
@@ -54,10 +54,10 @@ pip install -r requirements.txt
 
 | **Task** | **ReadME** | **Tutorials** |
 |:---|:---|:---|
-| Tokenizer Training | [README](src/tokenizer/README.md) file present in `src/tokenizer` for more details | [Tokenizer Training Tutorial](https://pages.github.com/IBM/NL-FM-Toolkit/tokenizer_train.html) |
-| Language Model | [README](src/lm/README.md) file present in `src/lm` for more details | <br> [Masked Language Model Tutorial](https://pages.github.com/IBM/NL-FM-Toolkit/mlm_train.html) </br> <br>[Causal Language Model Tutorial](https://pages.github.com/IBM/NL-FM-Toolkit/clm_train.html)  |
-| Token Classification (Sequence-Labeling) Tasks | [README](src/tokenclassifier/README.md) file present in `src/token_classsifier` for more details | [Sequence Labeling Trainer](https://pages.github.com/IBM/NL-FM-Toolkit/token_classifier_train.html) |
-| Sequence-Classification Tasks | [README](src/sequenceclassifier/README.md) file present in `src/sequence_classsifier` for more details | [Sequence Classification Trainer](https://pages.github.com/IBM/NL-FM-Toolkit/sequence_classifier_train.html) |
+| Tokenizer Training | [README](src/tokenizer/README.md) file present in `src/tokenizer` for more details | [Tokenizer Training Tutorial](https://ibm.github.io/NL-FM-Toolkit/tokenizer_train.html) |
+| Language Model | [README](src/lm/README.md) file present in `src/lm` for more details | <br> [Masked Language Model Tutorial](https://ibm.github.io/NL-FM-Toolkit/mlm_train.html) </br> <br>[Causal Language Model Tutorial](https://ibm.github.io/NL-FM-Toolkit/clm_train.html)  |
+| Token Classification (Sequence-Labeling) Tasks | [README](src/tokenclassifier/README.md) file present in `src/token_classsifier` for more details | [Sequence Labeling Trainer](https://ibm.github.io/NL-FM-Toolkit/token_classifier_train.html) |
+| Sequence-Classification Tasks | [README](src/sequenceclassifier/README.md) file present in `src/sequence_classsifier` for more details | [Sequence Classification Trainer](https://ibm.github.io/NL-FM-Toolkit/sequence_classifier_train.html) |
 
 
 ## 📁 Folder structure
