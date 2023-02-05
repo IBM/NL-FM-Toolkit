@@ -106,7 +106,7 @@ folder | description
 
 If you find toolkit in your work, you can cite the paper as below:
 
-```latex
+```
 @inproceedings{dhamecha-etal-2021-role,
     title = "Role of {L}anguage {R}elatedness in {M}ultilingual {F}ine-tuning of {L}anguage {M}odels: {A} {C}ase {S}tudy in {I}ndo-{A}ryan {L}anguages",
     author = "Dhamecha, Tejas  and
