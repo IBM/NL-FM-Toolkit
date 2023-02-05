@@ -5,6 +5,11 @@ The repository was used to obtain all the results reported in the paper [**Role 
 
 The IndoAryan Language models can be found [here](https://huggingface.co/ibm/ia-multilingual-transliterated-roberta) and [here](https://huggingface.co/ibm/ia-multilingual-original-script-roberta)
 
+<div align="center">
+    <img src="https://user-images.githubusercontent.com/13848158/155354389-d0301620-77ea-4629-a743-f7aa249e14b5.png" width="60">
+    <img src="https://user-images.githubusercontent.com/13848158/155354342-7df0ef5e-63d2-4df7-b9f1-d2fc0e95f53f.png" width="60">
+</div>
+
 ## 🔬 Natural Language - Foundational Model - Toolkit
 
 
@@ -28,6 +33,9 @@ The following models are supported for training language models
     - Whole-word Masked Language Modeling
 - Auto-regressive Models (GPT like models)
     - Causal Language Modeling
+
+### What is New!
+The code uses [Aim](https://github.com/aimhubio/aim) to keep track of various hyper-parameter runs and select the best hyper-parameter.
 
 
 ## 📚 Documentation

@@ -20,38 +20,49 @@ import run_tc
 
 import argparse
 
+
 def get_command_line_args():
     cli_parser = argparse.ArgumentParser(description="Train Sequence Labeler")
-    
-    cli_parser.add_argument("--data", help="Path to data directory or huggingface dataset name")
+
+    cli_parser.add_argument(
+        "--data", help="Path to data directory or huggingface dataset name"
+    )
     cli_parser.add_argument(
         "--model_name", required=True, help="Name or path to pre-trained language model"
     )
-    cli_parser.add_argument("--tokenizer_name", default='', help="Tokenizer Name")
+    cli_parser.add_argument("--tokenizer_name", default=None, help="Tokenizer Name")
 
-    cli_parser.add_argument("--output_dir", default='', help="Output Directory")
-
+    cli_parser.add_argument("--output_dir", default=None, help="Output Directory")
     cli_parser.add_argument(
-        "--task_name", required=True, help="Task name"
+        "--log_dir", default=None, help="Path to folder where logs would be stored"
     )
 
-    cli_parser.add_argument("--batch_size", default='8', help="Batch Size")
-    cli_parser.add_argument("--learning_rate", default='1e-5', help="Learning Rate")
+    cli_parser.add_argument("--task_name", required=True, help="Task name")
 
-    cli_parser.add_argument("--train_steps", default='10000', help="Train Steps")
-    cli_parser.add_argument("--eval_steps", default='5000', help="Eval Steps")
-    cli_parser.add_argument("--save_steps", default='5000', help="Save Steps")
+    cli_parser.add_argument("--batch_size", default="8", help="Batch Size")
+    cli_parser.add_argument("--learning_rate", default="1e-5", help="Learning Rate")
 
-    cli_parser.add_argument("--config_name", default='', help="Configuration Name")
-    
-    cli_parser.add_argument("--max_seq_len", default='512', help="Maximum Sequence Length")
-    
-    cli_parser.add_argument("--perform_grid_search", default='1', help="Perform Grid Search")
-    cli_parser.add_argument("--seed", default='1', help="Random Seed")
+    cli_parser.add_argument("--train_steps", default="10000", help="Train Steps")
+    cli_parser.add_argument("--eval_steps", default="5000", help="Eval Steps")
+    cli_parser.add_argument("--save_steps", default="5000", help="Save Steps")
 
-    cli_parser.add_argument("--eval_only", action='store_true', help="Perform Evaluation Only")
-    
+    cli_parser.add_argument("--config_name", default="", help="Configuration Name")
+
+    cli_parser.add_argument(
+        "--max_seq_len", default="512", help="Maximum Sequence Length"
+    )
+
+    cli_parser.add_argument(
+        "--perform_grid_search", default="1", help="Perform Grid Search"
+    )
+    cli_parser.add_argument("--seed", default="1", help="Random Seed")
+
+    cli_parser.add_argument(
+        "--eval_only", action="store_true", help="Perform Evaluation Only"
+    )
+
     return cli_parser
+
 
 def main():
     parser = get_command_line_args()
@@ -65,23 +76,23 @@ def main():
     # Batch Size
     batch_size = args.batch_size
     learning_rate = args.learning_rate
-    
+
     train_steps = args.train_steps
     eval_steps = args.eval_steps
     save_steps = args.save_steps
 
     configuration_name = args.config_name
-    
+
     max_seq_len = args.max_seq_len
     perform_grid_search = args.perform_grid_search
-    
+
     seed = args.seed
 
     if args.tokenizer_name is not None:
         tokenizer_name = args.tokenizer_name
     else:
         tokenizer_name = args.model_name
-    
+
     output_dir = args.output_dir
 
     output_dir_name = (
@@ -100,10 +111,16 @@ def main():
         + seed
     )
 
+    if args.log_dir is None:
+        args.log_dir = "logs"
+
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+
     if os.path.exists(data_dir):
         arguments = """--train_file DATADIR/train.json \
             --validation_file DATADIR/dev.json \
-            --validation_file DATADIR/test.json \
+            --test_file DATADIR/test.json \
             --model_name_or_path MODELNAME \
             --tokenizer_name TOKENIZERNAME \
             --output_dir OUTPUTDIR \
@@ -123,6 +140,7 @@ def main():
             --overwrite_output_dir \
             --overwrite_cache \
             --early_stop \
+            --log_dir LOGDIR \
             --cache_dir /tmp/
         """
     else:
@@ -146,10 +164,11 @@ def main():
             --overwrite_output_dir \
             --overwrite_cache \
             --early_stop \
+            --log_dir LOGDIR \
             --cache_dir /tmp/
         """
 
-    if perform_grid_search:
+    if perform_grid_search == "1":
         # Don't perform prediction on test set at the time of grid search
         arguments = arguments.replace("--do_predict ", "")
     else:
@@ -162,6 +181,7 @@ def main():
 
     arguments = arguments.replace("DATADIR", data_dir)
     arguments = arguments.replace("OUTPUTDIR", output_dir_name)
+    arguments = arguments.replace("LOGDIR", args.log_dir)
 
     arguments = arguments.replace("MODELNAME", model_name)
     arguments = arguments.replace("TOKENIZERNAME", tokenizer_name)
@@ -170,14 +190,13 @@ def main():
     arguments = arguments.replace("TRAINSTEPS", train_steps)
     arguments = arguments.replace("SAVESTEPS", save_steps)
     arguments = arguments.replace("EVALSTEPS", eval_steps)
-    
+
     arguments = arguments.replace("LERNRATE", learning_rate)
     arguments = arguments.replace("BATCHSIZE", batch_size)
-    
-    arguments = arguments.replace("MAXSEQLEN", max_seq_len)
-    
-    arguments = arguments.replace("RANDOM", seed)
 
+    arguments = arguments.replace("MAXSEQLEN", max_seq_len)
+
+    arguments = arguments.replace("RANDOM", seed)
 
     arguments = arguments.replace("\n", " ")
     arguments = re.sub("\s+", " ", arguments)
@@ -185,30 +204,9 @@ def main():
 
     result = run_tc.main(arguments)
 
-    if perform_grid_search:
-        model = model_name
-        if "/" in model_name:
-            model = model_name.split("/")[-1]
-
-        log_file_name = (
-            configuration_name
-            + "_"
-            + model
-            + "_"
-            + task_name
-            + "_"
-            + str(batch_size)
-            + "_"
-            + str(learning_rate)
-            + "_results.txt"
-        )
-        log_file_name = os.path.join(output_dir, log_file_name)
-
-        with open(log_file_name, "w") as writer:
-            for key, value in result.items():
-                writer.write("%s = %s\n" % (key, value))
-
+    if perform_grid_search == "1":
         os.system("rm -rf " + output_dir_name)
+
 
 if __name__ == "__main__":
     main()

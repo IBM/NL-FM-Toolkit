@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Fine-tuning the library models for named entity recognition on CoNLL-2003 (Bert or Roberta). """
 
 import sys
 import os
@@ -19,154 +18,186 @@ import subprocess
 import re
 import run_seq
 
-data_dir = sys.argv[1]
-model_name = sys.argv[2]
-task_name = sys.argv[3]
+import argparse
 
-# Batch Size
-if len(sys.argv) >= 5:
-    batch_size = sys.argv[4]
-else:
-    batch_size = "32"
+def get_command_line_args():
+    cli_parser = argparse.ArgumentParser(description="Train Sequence Labeler")
+    
+    cli_parser.add_argument("--data", help="Path to data directory or huggingface dataset name")
+    cli_parser.add_argument(
+        "--model_name", required=True, help="Name or path to pre-trained language model"
+    )
+    cli_parser.add_argument("--tokenizer_name", default=None, help="Tokenizer Name")
 
-# Learning Rate
-if len(sys.argv) >= 6:
-    learning_rate = sys.argv[5]
-else:
-    learning_rate = "1e-5"
+    cli_parser.add_argument("--output_dir", default=None, help="Output Directory")
+    cli_parser.add_argument("--log_dir", default=None, help="Path to folder where logs would be stored")
 
-# Number of training epochs
-if len(sys.argv) >= 7:
-    train_epoch = sys.argv[6]
-else:
-    train_epoch = "3"
+    cli_parser.add_argument(
+        "--task_name", default="generic", required=True, help="Task name"
+    )
 
-# configuration name
-if len(sys.argv) >= 8:
-    configuration_name = sys.argv[7]
-else:
-    configuration_name = "sentiment"
+    cli_parser.add_argument("--batch_size", default='8', help="Batch Size")
+    cli_parser.add_argument("--learning_rate", default='1e-5', help="Learning Rate")
 
-# maximum sequence length
-if len(sys.argv) >= 9:
-    max_seq_len = sys.argv[8]
-else:
-    max_seq_len = "512"
+    cli_parser.add_argument("--train_steps", default='5000', help="Train Steps")
+    cli_parser.add_argument("--eval_steps", default='1000', help="Eval Steps")
+    cli_parser.add_argument("--save_steps", default='1000', help="Save Steps")
 
-# Do hyper-parameter tuning or just training
-if len(sys.argv) >= 10:
-    perform_grid_search = bool(int(sys.argv[9]))
-else:
-    perform_grid_search = True
+    cli_parser.add_argument("--config_name", default='', help="Configuration Name")
+    
+    cli_parser.add_argument("--max_seq_len", default='512', help="Maximum Sequence Length")
+    
+    cli_parser.add_argument("--perform_grid_search", default='1', help="Perform Grid Search")
+    cli_parser.add_argument("--seed", default='1', help="Random Seed")
 
-if len(sys.argv) >= 11:
-    seed = sys.argv[10]
-else:
-    seed = "42"
+    cli_parser.add_argument("--eval_only", action='store_true', help="Perform Evaluation Only")
+    
+    return cli_parser
 
-if len(sys.argv) >= 12:
-    tokenizer_name = sys.argv[11]
-else:
-    tokenizer_name = "bert-base-multilingual-cased"
+def main():
+    parser = get_command_line_args()
 
-if len(sys.argv) >= 13:
-    output_dir = sys.argv[12]
-else:
-    output_dir = "output"
+    args = parser.parse_args()
 
-if len(sys.argv) >= 14:
-    test_file = sys.argv[13]
+    data_dir = args.data
+    model_name = args.model_name
+    task_name = args.task_name
 
-output_dir_name = (
-    output_dir
-    + "/"
-    + configuration_name
-    + "_"
-    + task_name
-    + "_"
-    + str(batch_size)
-    + "_"
-    + str(learning_rate)
-    + "_"
-    + str(train_epoch)
-    + "_"
-    + seed
-)
+    # Batch Size
+    batch_size = args.batch_size
+    learning_rate = args.learning_rate
+    
+    train_steps = args.train_steps
+    eval_steps = args.eval_steps
+    save_steps = args.save_steps
 
-arguments = """--train_file DATADIR/train.txt --validation_file DATADIR/dev.txt --test_file DATADIR/test.txt \
-  --model_name_or_path MODELNAME \
-  --tokenizer_name TOKENIZERNAME \
-  --output_dir OUTPUTDIR \
-  --overwrite_output_dir \
-  --max_seq_length MAXSEQLEN \
-  --num_train_epochs TRAINEPOCH \
-  --learning_rate LEARNINGRATE \
-  --per_device_train_batch_size BATCHSIZE \
-  --save_steps 50 \
-  --seed RANDOM \
-  --do_train \
-  --do_eval \
-  --do_predict \
-  --report_to tensorboard \
-  --task_name TASKNAME \
-  --task TASKNAME \
-  --save_total_limit 1 \
-  --overwrite_cache \
-  --early_stop \
-  --cache_dir /tmp/
-"""
+    configuration_name = args.config_name
+    
+    max_seq_len = args.max_seq_len
+    perform_grid_search = args.perform_grid_search
+    
+    seed = args.seed
 
-if perform_grid_search:
-    # Don't perform prediction on test set at the time of grid search
-    arguments = arguments.replace("--do_predict ", "")
-else:
-    print("Not performing grid search")
+    if args.tokenizer_name is not None:
+        tokenizer_name = args.tokenizer_name
+    else:
+        tokenizer_name = args.model_name
 
-if len(sys.argv) >= 14:
-    # perform only prediction
-    arguments = arguments.replace("--do_eval", " ")
-    arguments = arguments.replace("--do_train", " ")
-    arguments = arguments + " --test_file " + test_file
-    print("Performing only prediction")
+    output_dir = args.output_dir
 
-arguments = arguments.replace("DATADIR", data_dir)
-arguments = arguments.replace("OUTPUTDIR", output_dir_name)
-arguments = arguments.replace("MODELNAME", model_name)
-arguments = arguments.replace("TASKNAME", task_name)
-arguments = arguments.replace("TRAINEPOCH", train_epoch)
-arguments = arguments.replace("LEARNINGRATE", learning_rate)
-arguments = arguments.replace("BATCHSIZE", batch_size)
-arguments = arguments.replace("MAXSEQLEN", max_seq_len)
-arguments = arguments.replace("TOKENIZERNAME", tokenizer_name)
-arguments = arguments.replace("RANDOM", seed)
-
-arguments = arguments.replace("\n", " ")
-arguments = re.sub("\s+", " ", arguments)
-arguments = arguments.strip().split(" ")
-
-result = run_seq.main(arguments)
-
-if perform_grid_search:
-    model = model_name
-    if "/" in model_name:
-        model = model_name.split("/")[-1]
-
-    log_file_name = (
-        configuration_name
-        + "_"
-        + model
+    output_dir_name = (
+        output_dir
+        + "/"
+        + configuration_name
         + "_"
         + task_name
         + "_"
         + str(batch_size)
         + "_"
         + str(learning_rate)
-        + "_results.txt"
+        + "_"
+        + str(train_steps)
+        + "_"
+        + seed
     )
-    log_file_name = os.path.join(output_dir, log_file_name)
 
-    with open(log_file_name, "w") as writer:
-        for key, value in result.items():
-            writer.write("%s = %s\n" % (key, value))
+    if args.log_dir is None:
+        args.log_dir = 'logs'
 
-    os.system("rm -rf " + output_dir_name)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+
+    if os.path.exists(data_dir):
+        arguments = """--train_file DATADIR/train.txt \
+            --validation_file DATADIR/dev.txt \
+            --test_file DATADIR/test.txt \
+            --model_name_or_path MODELNAME \
+            --tokenizer_name TOKENIZERNAME \
+            --output_dir OUTPUTDIR \
+            --max_seq_length MAXSEQLEN \
+            --max_steps TRAINSTEPS \
+            --save_steps SAVESTEPS \
+            --eval_steps EVALSTEPS \
+            --learning_rate LEARNINGRATE \
+            --per_device_train_batch_size BATCHSIZE \
+            --seed RANDOM \
+            --do_train \
+            --do_eval \
+            --do_predict \
+            --report_to tensorboard \
+            --task_name TASKNAME \
+            --task TASKNAME \
+            --save_total_limit 1 \
+            --overwrite_output_dir \
+            --overwrite_cache \
+            --early_stop \
+            --log_dir LOGDIR \
+            --cache_dir /tmp/
+            """
+    else:
+        arguments = """--dataset_name DATADIR \
+        --model_name_or_path MODELNAME \
+        --tokenizer_name TOKENIZERNAME \
+        --output_dir OUTPUTDIR \
+        --max_seq_length MAXSEQLEN \
+        --max_steps TRAINSTEPS \
+        --save_steps SAVESTEPS \
+        --eval_steps EVALSTEPS \
+        --learning_rate LEARNINGRATE \
+        --per_device_train_batch_size BATCHSIZE \
+        --seed RANDOM \
+        --do_train \
+        --do_eval \
+        --do_predict \
+        --report_to tensorboard \
+        --task_name TASKNAME \
+        --task TASKNAME \
+        --save_total_limit 1 \
+        --overwrite_output_dir \
+        --overwrite_cache \
+        --early_stop \
+        --log_dir LOGDIR \
+        --cache_dir /tmp/
+        """
+
+    if perform_grid_search == "1":
+        # Don't perform prediction on test set at the time of grid search
+        arguments = arguments.replace("--do_predict ", "")
+    else:
+        print("Not performing grid search")
+
+    if args.eval_only:
+        arguments = arguments.replace("--do_train ", "")
+        arguments = arguments.replace("--do_eval ", "")
+        print("Performing evaluation only")
+
+    arguments = arguments.replace("DATADIR", data_dir)
+    arguments = arguments.replace("OUTPUTDIR", output_dir_name)
+    arguments = arguments.replace("LOGDIR", args.log_dir)
+
+    arguments = arguments.replace("MODELNAME", model_name)
+    arguments = arguments.replace("TOKENIZERNAME", tokenizer_name)
+    arguments = arguments.replace("TASKNAME", task_name)
+
+    arguments = arguments.replace("TRAINSTEPS", train_steps)
+    arguments = arguments.replace("SAVESTEPS", save_steps)
+    arguments = arguments.replace("EVALSTEPS", eval_steps)
+
+    arguments = arguments.replace("LEARNINGRATE", learning_rate)
+    arguments = arguments.replace("BATCHSIZE", batch_size)
+
+    arguments = arguments.replace("MAXSEQLEN", max_seq_len)
+    
+    arguments = arguments.replace("RANDOM", seed)
+
+    arguments = arguments.replace("\n", " ")
+    arguments = re.sub("\s+", " ", arguments)
+    arguments = arguments.strip().split(" ")
+
+    result = run_seq.main(arguments)
+
+    if perform_grid_search == "1":
+        os.system("rm -rf " + output_dir_name)
+
+if __name__ == "__main__":
+    main()

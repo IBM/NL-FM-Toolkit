@@ -64,8 +64,8 @@ def main():
             else:
                 line = line.strip()
 
-				# last but one column is the gold label
-				# last column is the predicted label
+                # last but one column is the gold label
+                # last column is the predicted label
                 predictions.append(line.split("\t")[-1])
                 gold_label.append(line.split("\t")[-2])
 

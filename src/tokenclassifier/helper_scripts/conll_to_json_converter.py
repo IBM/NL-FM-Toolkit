@@ -21,13 +21,17 @@ import argparse
 
 logger = datasets.logging.get_logger(__name__)
 
+
 def get_command_line_args():
     parser = argparse.ArgumentParser(description="Convert CoNLL fil to JSON")
-    
+
     parser.add_argument("--data_dir", help="Path to data directory")
-    parser.add_argument("--column_number", default=1, type=int, help="Column number of the labels")
-    
+    parser.add_argument(
+        "--column_number", default=1, type=int, help="Column number of the labels"
+    )
+
     return parser
+
 
 def _generate_examples(filepath, column_number):
     logger.info("⏳ Generating examples from = %s", filepath)
@@ -35,10 +39,10 @@ def _generate_examples(filepath, column_number):
         guid = 0
         tokens = []
         ner_tags = []
-        
+
         for line in f:
             line = line.strip()
-            line = line.replace(' ', '\t')
+            line = line.replace(" ", "\t")
 
             if line.startswith("-DOCSTART-") or line == "" or line == "\n":
                 if len(tokens) > 0:
@@ -62,6 +66,7 @@ def _generate_examples(filepath, column_number):
             "ner_tags": ner_tags,
         }
 
+
 def main():
     parser = get_command_line_args()
     args = parser.parse_args()
@@ -73,12 +78,12 @@ def main():
 
         json_file_name = os.path.join(args.data_dir, each_file + ".json")
 
-        with open(json_file_name, 'w', errors='ignore', encoding='utf-8') as writer:
+        with open(json_file_name, "w", errors="ignore", encoding="utf-8") as writer:
             for each_sentence in _generate_examples(csv_file_name, args.column_number):
-                writer.write(json.dumps( each_sentence[1] ))
-                writer.write('\n')
+                writer.write(json.dumps(each_sentence[1]))
+                writer.write("\n")
             writer.close()
 
-    
+
 if __name__ == "__main__":
     main()

@@ -15,6 +15,7 @@
 import os
 import argparse
 
+
 def get_command_line_args():
     parser = argparse.ArgumentParser(description="Tune Best Hyper-parameter")
     parser.add_argument("--data_dir", help="Path to data directory")
@@ -25,11 +26,14 @@ def get_command_line_args():
     parser.add_argument(
         "--tokenizer_name", help="Name or path to pre-trained tokenizer"
     )
+    parser.add_argument(
+        "--train_steps", default=10000, help="Number of train steps to be performed"
+    )
     parser.add_argument("--output_dir", help="Output Folder Name")
     parser.add_argument(
         "--task_name",
         type=str,
-        default="sentiment",
+        default="generic",
         help="The sequence classification task to be performed",
         choices=[
             "cola",
@@ -42,7 +46,12 @@ def get_command_line_args():
             "stsb",
             "wnli",
             "sentiment",
+            "generic",
+            "rotten_tomatoes",
         ],
+    )
+    parser.add_argument(
+        "--log_dir", default=None, help="Path to folder where logs would be stored"
     )
 
     return parser
@@ -98,7 +107,19 @@ def main():
 
             num_jobs = num_jobs + 1
 
-            command = "python src/sequenceclassifier/train_seq.py {2} {3} {7} {0} {1} 2 {4} 256 1 1 {5} {6}".format(
+            command = "python src/sequenceclassifier/train_seq.py \
+                --data {2} \
+                --model_name {3} \
+                --task_name {8} \
+                --batch_size {0} \
+                --learning_rate {1} \
+                --train_steps {9} \
+                --config_name {4} \
+                --perform_grid_search 1 \
+                --seed 1 \
+                --tokenizer_name {5} \
+                --output_dir {6}\
+                --log_dir {7}".format(
                 b,
                 l,
                 args.data_dir,
@@ -106,8 +127,11 @@ def main():
                 config,
                 args.tokenizer_name,
                 args.output_dir,
+                args.log_dir,
                 args.task_name,
+                args.train_steps
             )
+
             os.system(command)
     print("Number of jobs being executed is {0}".format(num_jobs))
 

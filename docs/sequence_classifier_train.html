@@ -131,61 +131,11 @@
 <span class="linenos">4</span>    --model_name demo/model/mlm/checkpoint-200/ <span class="se">\</span>
 <span class="linenos">5</span>    --output_dir demo/model/sentiment/ <span class="se">\</span>
 <span class="linenos">6</span>    --tokenizer_name demo/model/tokenizer/ <span class="se">\</span>
-<span class="linenos">7</span>    --task_name sentiment
+<span class="linenos">7</span>    --task_name sentiment <span class="se">\</span>
+<span class="linenos">8</span>    --log_dir logs
 </pre></div>
 </div>
-<p>The code performs hyper-parameter tuning and creates the following files in the folder <code class="docutils literal notranslate"><span class="pre">demo/model/sentiment/</span></code></p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="gp">$ </span>ls -lh demo/model/sentiment <span class="p">|</span> awk <span class="s1">&#39;{print $5, $9}&#39;</span>
-<span class="linenos"> 2</span><span class="go">175B bert-custom-model__sentiment_16_1e-3_results.txt</span>
-<span class="linenos"> 3</span><span class="go">173B bert-custom-model__sentiment_16_1e-4_results.txt</span>
-<span class="linenos"> 4</span><span class="go">160B bert-custom-model__sentiment_16_1e-5_results.txt</span>
-<span class="linenos"> 5</span><span class="go">158B bert-custom-model__sentiment_16_1e-6_results.txt</span>
-<span class="linenos"> 6</span><span class="go">173B bert-custom-model__sentiment_16_3e-3_results.txt</span>
-<span class="linenos"> 7</span><span class="go">175B bert-custom-model__sentiment_16_3e-4_results.txt</span>
-<span class="linenos"> 8</span><span class="go">159B bert-custom-model__sentiment_16_3e-5_results.txt</span>
-<span class="linenos"> 9</span><span class="go">160B bert-custom-model__sentiment_16_3e-6_results.txt</span>
-<span class="linenos">10</span><span class="go">159B bert-custom-model__sentiment_16_5e-3_results.txt</span>
-<span class="linenos">11</span><span class="go">173B bert-custom-model__sentiment_16_5e-4_results.txt</span>
-<span class="linenos">12</span><span class="go">159B bert-custom-model__sentiment_16_5e-5_results.txt</span>
-<span class="linenos">13</span><span class="go">159B bert-custom-model__sentiment_16_5e-6_results.txt</span>
-<span class="linenos">14</span><span class="go">172B bert-custom-model__sentiment_32_1e-3_results.txt</span>
-<span class="linenos">15</span><span class="go">172B bert-custom-model__sentiment_32_1e-4_results.txt</span>
-<span class="linenos">16</span><span class="go">159B bert-custom-model__sentiment_32_1e-5_results.txt</span>
-<span class="linenos">17</span><span class="go">158B bert-custom-model__sentiment_32_1e-6_results.txt</span>
-<span class="linenos">18</span><span class="go">175B bert-custom-model__sentiment_32_3e-3_results.txt</span>
-<span class="linenos">19</span><span class="go">174B bert-custom-model__sentiment_32_3e-4_results.txt</span>
-<span class="linenos">20</span><span class="go">159B bert-custom-model__sentiment_32_3e-5_results.txt</span>
-<span class="linenos">21</span><span class="go">160B bert-custom-model__sentiment_32_3e-6_results.txt</span>
-<span class="linenos">22</span><span class="go">160B bert-custom-model__sentiment_32_5e-3_results.txt</span>
-<span class="linenos">23</span><span class="go">174B bert-custom-model__sentiment_32_5e-4_results.txt</span>
-<span class="linenos">24</span><span class="go">159B bert-custom-model__sentiment_32_5e-5_results.txt</span>
-<span class="linenos">25</span><span class="go">160B bert-custom-model__sentiment_32_5e-6_results.txt</span>
-<span class="linenos">26</span><span class="go">175B bert-custom-model__sentiment_8_1e-3_results.txt</span>
-<span class="linenos">27</span><span class="go">175B bert-custom-model__sentiment_8_1e-4_results.txt</span>
-<span class="linenos">28</span><span class="go">159B bert-custom-model__sentiment_8_1e-5_results.txt</span>
-<span class="linenos">29</span><span class="go">158B bert-custom-model__sentiment_8_1e-6_results.txt</span>
-<span class="linenos">30</span><span class="go">174B bert-custom-model__sentiment_8_3e-3_results.txt</span>
-<span class="linenos">31</span><span class="go">174B bert-custom-model__sentiment_8_3e-4_results.txt</span>
-<span class="linenos">32</span><span class="go">160B bert-custom-model__sentiment_8_3e-5_results.txt</span>
-<span class="linenos">33</span><span class="go">159B bert-custom-model__sentiment_8_3e-6_results.txt</span>
-<span class="linenos">34</span><span class="go">160B bert-custom-model__sentiment_8_5e-3_results.txt</span>
-<span class="linenos">35</span><span class="go">175B bert-custom-model__sentiment_8_5e-4_results.txt</span>
-<span class="linenos">36</span><span class="go">160B bert-custom-model__sentiment_8_5e-5_results.txt</span>
-<span class="linenos">37</span><span class="go">160B bert-custom-model__sentiment_8_5e-6_results.txt</span>
-</pre></div>
-</div>
-<p>Each file contains the dev-set performance from that hyper-parameter. For instance, batch-size of <code class="docutils literal notranslate"><span class="pre">16</span></code> and <code class="docutils literal notranslate"><span class="pre">1e-5</span></code> gives the following f1-score</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="gp">$ </span>cat demo/model/sentiment/bert-custom-model__sentiment_16_1e-4_results.txt
-<span class="linenos">2</span><span class="go">eval_loss = 0.6930071711540222</span>
-<span class="linenos">3</span><span class="go">eval_f1 = 0.6666666666666666</span>
-<span class="linenos">4</span><span class="go">eval_runtime = 0.0849</span>
-<span class="linenos">5</span><span class="go">eval_samples_per_second = 70.7</span>
-<span class="linenos">6</span><span class="go">eval_steps_per_second = 11.783</span>
-<span class="linenos">7</span><span class="go">epoch = 2.0</span>
-<span class="linenos">8</span><span class="go">eval_samples = 6</span>
-</pre></div>
-</div>
-<p>The F1-score is low as we have fine-tuned the model on very few sentences.</p>
+<p>The code performs hyper-parameter tuning and <cite>Aim</cite> library tracks the experiment in <code class="docutils literal notranslate"><span class="pre">logs</span></code> folder</p>
 </section>
 <section id="fine-tuning-using-best-hyper-parameter">
 <h2>Fine-Tuning using best Hyper-Parameter<a class="headerlink" href="#fine-tuning-using-best-hyper-parameter" title="Permalink to this heading"></a></h2>
@@ -196,7 +146,7 @@
 <span class="linenos"> 4</span>    --model_name demo/model/mlm/checkpoint-200/ <span class="se">\</span>
 <span class="linenos"> 5</span>    --output_dir demo/model/sentiment/ <span class="se">\</span>
 <span class="linenos"> 6</span>    --tokenizer_name demo/model/tokenizer/ <span class="se">\</span>
-<span class="linenos"> 7</span>    --filepath demo/model/sentiment/
+<span class="linenos"> 7</span>    --log_dir logs
 <span class="linenos"> 8</span>
 <span class="linenos"> 9</span><span class="go">    +----+------------+-------------+----------------+</span>
 <span class="linenos">10</span><span class="go">    |    |   F1-Score |   BatchSize |   LearningRate |</span>

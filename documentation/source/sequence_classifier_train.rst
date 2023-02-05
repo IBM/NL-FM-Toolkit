@@ -50,68 +50,11 @@ We now perform hyper-parameter tuning of the sequence classifier
         --model_name demo/model/mlm/checkpoint-200/ \
         --output_dir demo/model/sentiment/ \
         --tokenizer_name demo/model/tokenizer/ \
-        --task_name sentiment
+        --task_name sentiment \
+        --log_dir logs
 
-The code performs hyper-parameter tuning and creates the following files in the folder ``demo/model/sentiment/``
+The code performs hyper-parameter tuning and `Aim` library tracks the experiment in ``logs`` folder
 
-.. code-block:: console
-    :linenos:
-
-    $ ls -lh demo/model/sentiment | awk '{print $5, $9}'
-    175B bert-custom-model__sentiment_16_1e-3_results.txt
-    173B bert-custom-model__sentiment_16_1e-4_results.txt
-    160B bert-custom-model__sentiment_16_1e-5_results.txt
-    158B bert-custom-model__sentiment_16_1e-6_results.txt
-    173B bert-custom-model__sentiment_16_3e-3_results.txt
-    175B bert-custom-model__sentiment_16_3e-4_results.txt
-    159B bert-custom-model__sentiment_16_3e-5_results.txt
-    160B bert-custom-model__sentiment_16_3e-6_results.txt
-    159B bert-custom-model__sentiment_16_5e-3_results.txt
-    173B bert-custom-model__sentiment_16_5e-4_results.txt
-    159B bert-custom-model__sentiment_16_5e-5_results.txt
-    159B bert-custom-model__sentiment_16_5e-6_results.txt
-    172B bert-custom-model__sentiment_32_1e-3_results.txt
-    172B bert-custom-model__sentiment_32_1e-4_results.txt
-    159B bert-custom-model__sentiment_32_1e-5_results.txt
-    158B bert-custom-model__sentiment_32_1e-6_results.txt
-    175B bert-custom-model__sentiment_32_3e-3_results.txt
-    174B bert-custom-model__sentiment_32_3e-4_results.txt
-    159B bert-custom-model__sentiment_32_3e-5_results.txt
-    160B bert-custom-model__sentiment_32_3e-6_results.txt
-    160B bert-custom-model__sentiment_32_5e-3_results.txt
-    174B bert-custom-model__sentiment_32_5e-4_results.txt
-    159B bert-custom-model__sentiment_32_5e-5_results.txt
-    160B bert-custom-model__sentiment_32_5e-6_results.txt
-    175B bert-custom-model__sentiment_8_1e-3_results.txt
-    175B bert-custom-model__sentiment_8_1e-4_results.txt
-    159B bert-custom-model__sentiment_8_1e-5_results.txt
-    158B bert-custom-model__sentiment_8_1e-6_results.txt
-    174B bert-custom-model__sentiment_8_3e-3_results.txt
-    174B bert-custom-model__sentiment_8_3e-4_results.txt
-    160B bert-custom-model__sentiment_8_3e-5_results.txt
-    159B bert-custom-model__sentiment_8_3e-6_results.txt
-    160B bert-custom-model__sentiment_8_5e-3_results.txt
-    175B bert-custom-model__sentiment_8_5e-4_results.txt
-    160B bert-custom-model__sentiment_8_5e-5_results.txt
-    160B bert-custom-model__sentiment_8_5e-6_results.txt
-
-
-Each file contains the dev-set performance from that hyper-parameter. For instance, batch-size of ``16`` and ``1e-5`` gives the following f1-score
-
-.. code-block:: console
-    :linenos:
-
-    $ cat demo/model/sentiment/bert-custom-model__sentiment_16_1e-4_results.txt
-    eval_loss = 0.6930071711540222
-    eval_f1 = 0.6666666666666666
-    eval_runtime = 0.0849
-    eval_samples_per_second = 70.7
-    eval_steps_per_second = 11.783
-    epoch = 2.0
-    eval_samples = 6
-
-
-The F1-score is low as we have fine-tuned the model on very few sentences.
 
 Fine-Tuning using best Hyper-Parameter
 **************************************
@@ -127,7 +70,7 @@ We now run the script ``src/sequenceclassifier/helper_scripts/get_best_hyper_par
         --model_name demo/model/mlm/checkpoint-200/ \
         --output_dir demo/model/sentiment/ \
         --tokenizer_name demo/model/tokenizer/ \
-        --filepath demo/model/sentiment/
+        --log_dir logs
 
         +----+------------+-------------+----------------+
         |    |   F1-Score |   BatchSize |   LearningRate |

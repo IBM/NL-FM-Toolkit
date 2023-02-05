@@ -28,8 +28,10 @@ import numpy as np
 from sklearn.metrics import f1_score
 
 import datasets
-from datasets import load_dataset, load_metric
+import evaluate
+from datasets import load_dataset
 from datasets import features, ClassLabel
+from aim.hugging_face import AimCallback
 
 import transformers
 from transformers import (
@@ -58,6 +60,7 @@ import torch
 from torch import nn
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["AIM_UI_TELEMETRY_ENABLED"] = "0"
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.10.0.dev0")
@@ -78,51 +81,12 @@ task_to_keys = {
     "stsb": ("sentence1", "sentence2"),
     "wnli": ("sentence1", "sentence2"),
     "sentiment": ("sentence", None),
+    "generic": ("sentence", None),
+    "rotten_tomatoes": ("text", None)
 }
 
 logger = logging.getLogger(__name__)
 
-
-class GOATTrainer(Trainer):
-    def _save(self, output_dir: Optional[str] = None):
-        output_dir = output_dir if output_dir is not None else self.args.output_dir
-        os.makedirs(output_dir, exist_ok=True)
-        logger.info("Saving model checkpoint to %s", output_dir)
-        # Save a trained model and configuration using `save_pretrained()`.
-        # They can then be reloaded using `from_pretrained()`
-        if not isinstance(self.model, PreTrainedModel):
-            raise ValueError("Trainer.model appears to not be a PreTrainedModel")
-        self.model.save_pretrained(output_dir)
-
-        # Good practice: save your training arguments together with the trained model
-        torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
-        if not hasattr(self, "best_eval_f1"):
-            self.best_eval_f1 = 0.0
-
-        results = self.evaluate()
-        goat_dir = output_dir + "/../GOAT/"
-
-        logger.warning("GOAT Directory is {0}".format(goat_dir))
-
-        os.makedirs(goat_dir, exist_ok=True)
-
-        logger.warning(results)
-        logger.warning(
-            "Eval F1: New: {0} \t Best: {1}".format(
-                results["eval_f1"], self.best_eval_f1
-            )
-        )
-
-        if results["eval_f1"] > self.best_eval_f1:
-            logger.info("Found new GOAT")
-            if os.path.exists(goat_dir):
-                shutil.rmtree(goat_dir)
-            shutil.copytree(output_dir, goat_dir)
-            self.best_eval_f1 = results["eval_f1"]
-            with open(
-                os.path.join(goat_dir, output_dir.split("/")[-1] + ".txt"), "w"
-            ) as f:
-                f.write("Eval F1: {0}".format(self.best_eval_f1))
 
 
 @dataclass
@@ -203,7 +167,7 @@ class DataTrainingArguments:
         default=None,
         metadata={"help": "A csv or a json file containing the test data."},
     )
-
+    
     def __post_init__(self):
         if self.task_name is not None:
             self.task_name = self.task_name.lower()
@@ -280,6 +244,12 @@ class ModelArguments:
             "with private models)."
         },
     )
+    log_dir: Optional[str] = field(
+		default=None,
+		metadata={
+			"help": "Where do you want to store the log files"
+		},
+	)
 
 
 @dataclass
@@ -359,56 +329,69 @@ def main(args):
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    # Loading a dataset from your local files.
-    # CSV/JSON training and evaluation files are needed.
-    data_files = {
-        "train": data_args.train_file,
-        "validation": data_args.validation_file,
-        "test": data_args.test_file,
-    }
-
-    # Get the test dataset: you can provide your own CSV/JSON test file (see below)
-    if training_args.do_predict:
-        if data_args.test_file is not None:
-            train_extension = data_args.train_file.split(".")[-1]
-            test_extension = data_args.test_file.split(".")[-1]
-            assert (
-                test_extension == train_extension
-            ), "`test_file` should have the same extension (csv or json) as `train_file`."
-            data_files["test"] = data_args.test_file
-        else:
-            raise ValueError("Need either a GLUE task or a test file for `do_predict`.")
-
-    for key in data_files.keys():
-        logger.info(f"load a local file for {key}: {data_files[key]}")
-
-    if data_args.train_file.endswith(".csv"):
-        # Loading a dataset from local csv files
+    if data_args.dataset_name is not None:
+        # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(
-            "csv",
-            data_files=data_files,
+            data_args.dataset_name,
+            data_args.dataset_config_name,
             cache_dir=model_args.cache_dir,
-            delimiter="\t",
-        )
-    elif data_args.train_file.endswith(".json"):
-        raw_datasets = load_dataset(
-            "json", data_files=data_files, cache_dir=model_args.cache_dir
+            use_auth_token=True if model_args.use_auth_token else None,
         )
     else:
-        # Loading a dataset from local json files
-        raw_datasets = load_dataset(
-            "csv",
-            data_files=data_files,
-            cache_dir=model_args.cache_dir,
-            delimiter="\t",
-        )
+        # Loading a dataset from your local files.
+        # CSV/JSON training and evaluation files are needed.
+        data_files = {
+            "train": data_args.train_file,
+            "validation": data_args.validation_file,
+            "test": data_args.test_file,
+        }
+
+        # Get the test dataset: you can provide your own CSV/JSON test file (see below)
+        if training_args.do_predict:
+            if data_args.test_file is not None:
+                train_extension = data_args.train_file.split(".")[-1]
+                test_extension = data_args.test_file.split(".")[-1]
+                assert (
+                    test_extension == train_extension
+                ), "`test_file` should have the same extension (csv or json) as `train_file`."
+                data_files["test"] = data_args.test_file
+            else:
+                raise ValueError("Need either a GLUE task or a test file for `do_predict`.")
+
+        for key in data_files.keys():
+            logger.info(f"load a local file for {key}: {data_files[key]}")
+
+        if data_args.train_file.endswith(".csv"):
+            # Loading a dataset from local csv files
+            raw_datasets = load_dataset(
+                "csv",
+                data_files=data_files,
+                cache_dir=model_args.cache_dir,
+                delimiter="\t",
+            )
+        elif data_args.train_file.endswith(".json"):
+            raw_datasets = load_dataset(
+                "json", data_files=data_files, cache_dir=model_args.cache_dir
+            )
+        else:
+            # Loading a dataset from local json files
+            raw_datasets = load_dataset(
+                "csv",
+                data_files=data_files,
+                cache_dir=model_args.cache_dir,
+                delimiter="\t",
+            )
 
     # See more about loading any type of standard or custom dataset at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
     for key in raw_datasets:
-        raw_datasets[key] = raw_datasets[key].rename_column("Label", "labels")
-        raw_datasets[key] = raw_datasets[key].class_encode_column("labels")
+        if "label" in raw_datasets[key].column_names:
+            logger.info("We found \"label\" column in the dataset. We need to rename it to \"labels\"")
+            raw_datasets[key] = raw_datasets[key].rename_column("label", "labels")
+
+        if not isinstance(raw_datasets[key].features['labels'], ClassLabel):
+            raw_datasets[key] = raw_datasets[key].class_encode_column("labels")
 
     # Labels
     if data_args.task_name is not None:
@@ -571,8 +554,11 @@ def main(args):
         for index in random.sample(range(len(train_dataset)), 3):
             logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
 
-    # Get the metric function
-    metric = load_metric("f1")
+    # Metrics
+    process_id = os.path.basename(os.path.normpath(training_args.output_dir))
+    metric = evaluate.load("f1", experiment_id=process_id, cache_dir=model_args.cache_dir)
+
+    aim_callback = AimCallback(repo=model_args.log_dir, experiment=process_id)
 
     # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
     # predictions and label_ids field) and has to return a dictionary string to float.
@@ -582,8 +568,6 @@ def main(args):
 
         if data_args.task_name is not None:
             result = metric.compute(predictions=preds, references=p.label_ids)
-            if len(result) > 1:
-                result["combined_score"] = np.mean(list(result.values())).item()
             return result
         elif is_regression:
             return {"mse": ((preds - p.label_ids) ** 2).mean().item()}
@@ -609,35 +593,24 @@ def main(args):
 
     # Initialize our Trainer
     logger.warning("Initializing Trainer")
-    if task_args.early_stop:
-        early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=5)
-        training_args.metric_for_best_model = "eval_f1"
-        training_args.load_best_model_at_end = True
-        training_args.evaluation_strategy = IntervalStrategy.STEPS
-        training_args.eval_steps = training_args.save_steps
-        training_args.greater_is_better = True
+    early_stopping_callback = EarlyStoppingCallback(early_stopping_patience=5)
+    training_args.metric_for_best_model = "eval_f1"
+    training_args.load_best_model_at_end = True
+    training_args.evaluation_strategy = IntervalStrategy.STEPS
+    training_args.eval_steps = training_args.save_steps
+    training_args.greater_is_better = True
 
-        trainer = GOATTrainer(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset if training_args.do_train else None,
-            eval_dataset=eval_dataset if training_args.do_eval else None,
-            compute_metrics=compute_metrics,
-            tokenizer=tokenizer,
-            data_collator=data_collator,
-            callbacks=[early_stopping_callback],
-        )
-    else:
-        trainer = GOATTrainer(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset if training_args.do_train else None,
-            eval_dataset=eval_dataset if training_args.do_eval else None,
-            compute_metrics=compute_metrics,
-            tokenizer=tokenizer,
-            data_collator=data_collator,
-        )
-
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset if training_args.do_train else None,
+        eval_dataset=eval_dataset if training_args.do_eval else None,
+        compute_metrics=compute_metrics,
+        tokenizer=tokenizer,
+        data_collator=data_collator,
+        callbacks=[early_stopping_callback, aim_callback] if task_args.early_stop else [aim_callback],
+    )
+    
     # Training
     if training_args.do_train:
         checkpoint = None

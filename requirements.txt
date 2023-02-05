@@ -4,7 +4,7 @@ sacremoses==0.0.53
 seqeval==1.2.2
 tokenizers==0.12.1
 torch==1.13.1
-transformers==4.21.1
+transformers==4.24.0
 tensorboard==2.8.0
 huggingface-hub==0.7.0
 numpy==1.22.4
@@ -18,3 +18,5 @@ tqdm==4.64.0
 progressbar==2.5
 sphinx-rtd-theme==1.1.1
 sphinx-argparse
+aim==3.16.0
+evaluate==0.4.0

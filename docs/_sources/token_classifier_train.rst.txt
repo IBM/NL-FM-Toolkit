@@ -118,68 +118,11 @@ We now perform hyper-parameter tuning of the sequence labeler
         --configuration_name bert-custom \
         --model_name demo/model/mlm/checkpoint-200/ \
         --output_dir demo/model/ner/en/ \
-        --tokenizer_name demo/model/tokenizer/
+        --tokenizer_name demo/model/tokenizer/ \
+        --log_dir logs
 
-The code performs hyper-parameter tuning and creates the following files in the folder ``demo/model/ner/en/``
+The code performs hyper-parameter tuning and `Aim` library tracks the experiment in ``logs`` folder
 
-.. code-block:: console
-    :linenos:
-
-    $ ls -lh demo/model/ner/en/ | awk '{print $5, $9}'
-    169B bert-custom-model__ner_16_1e-3_results.txt
-    170B bert-custom-model__ner_16_1e-4_results.txt
-    170B bert-custom-model__ner_16_1e-5_results.txt
-    170B bert-custom-model__ner_16_1e-6_results.txt
-    170B bert-custom-model__ner_16_3e-3_results.txt
-    170B bert-custom-model__ner_16_3e-4_results.txt
-    170B bert-custom-model__ner_16_3e-5_results.txt
-    170B bert-custom-model__ner_16_3e-6_results.txt
-    170B bert-custom-model__ner_16_5e-3_results.txt
-    170B bert-custom-model__ner_16_5e-4_results.txt
-    170B bert-custom-model__ner_16_5e-5_results.txt
-    170B bert-custom-model__ner_16_5e-6_results.txt
-    169B bert-custom-model__ner_32_1e-3_results.txt
-    167B bert-custom-model__ner_32_1e-4_results.txt
-    168B bert-custom-model__ner_32_1e-5_results.txt
-    170B bert-custom-model__ner_32_1e-6_results.txt
-    170B bert-custom-model__ner_32_3e-3_results.txt
-    170B bert-custom-model__ner_32_3e-4_results.txt
-    170B bert-custom-model__ner_32_3e-5_results.txt
-    170B bert-custom-model__ner_32_3e-6_results.txt
-    170B bert-custom-model__ner_32_5e-3_results.txt
-    170B bert-custom-model__ner_32_5e-4_results.txt
-    169B bert-custom-model__ner_32_5e-5_results.txt
-    170B bert-custom-model__ner_32_5e-6_results.txt
-    169B bert-custom-model__ner_8_1e-3_results.txt
-    169B bert-custom-model__ner_8_1e-4_results.txt
-    170B bert-custom-model__ner_8_1e-5_results.txt
-    170B bert-custom-model__ner_8_1e-6_results.txt
-    169B bert-custom-model__ner_8_3e-3_results.txt
-    170B bert-custom-model__ner_8_3e-4_results.txt
-    170B bert-custom-model__ner_8_3e-5_results.txt
-    169B bert-custom-model__ner_8_3e-6_results.txt
-    170B bert-custom-model__ner_8_5e-3_results.txt
-    170B bert-custom-model__ner_8_5e-4_results.txt
-    169B bert-custom-model__ner_8_5e-5_results.txt
-    169B bert-custom-model__ner_8_5e-6_results.txt
-
-
-Each file contains the dev-set performance from that hyper-parameter. For instance, batch-size of ``16`` and ``1e-5`` gives the following f1-score
-
-.. code-block:: console
-    :linenos:
-
-    $ cat demo/model/ner/en/bert-custom-model__ner_16_1e-5_results.txt
-    test_loss = 1.8827987909317017
-    test_precision = 0.05
-    test_recall = 0.25
-    test_f1 = 0.08333333333333334
-    test_runtime = 0.0489
-    test_samples_per_second = 61.302
-    test_steps_per_second = 20.434
-
-
-The F1-score is low as we have fine-tuned the model on only 2 sentences.
 
 Fine-Tuning using best Hyper-Parameter
 **************************************
@@ -195,7 +138,7 @@ We now run the script ``src/tokenclassifier/helper_scripts/get_best_hyper_parame
         --model_name demo/model/mlm/checkpoint-200/ \
         --output_dir demo/model/ner/en/ \
         --tokenizer_name demo/model/tokenizer/ \
-        --filepath demo/model/ner/en/
+        --log_dir logs
 
         +----+------------+-------------+----------------+
         |    |   F1-Score |   BatchSize |   LearningRate |
