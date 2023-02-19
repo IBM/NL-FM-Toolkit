@@ -101,6 +101,10 @@ class ModelArguments:
             )
         },
     )
+    use_bilstm: bool = field(
+        default=False,
+        metadata={"help": ("Use BiLSTM layer on top of pre-trained LM")},
+    )
 
 
 @dataclass
@@ -370,6 +374,10 @@ def main(args):
         label2id=label_to_id,
         cache_dir=model_args.cache_dir,
     )
+
+    if model_args.use_bilstm:
+        config.use_bilstm = model_args.use_bilstm
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name
         if model_args.tokenizer_name
@@ -377,13 +385,24 @@ def main(args):
         cache_dir=model_args.cache_dir,
         use_fast="True",
     )
-    model = AutoModelForTokenClassification.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-    )
 
+    if not model_args.use_bilstm:
+        model = AutoModelForTokenClassification.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+            cache_dir=model_args.cache_dir,
+            use_auth_token=True if model_args.use_auth_token else None,
+        )
+    else:
+        model = BertForTokenClassificationBiLSTM.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+            cache_dir=model_args.cache_dir,
+            use_auth_token=True if model_args.use_auth_token else None,
+        )
+    
     n_params = 0
     for name, p in model.named_parameters():
         n_params = n_params + p.numel()

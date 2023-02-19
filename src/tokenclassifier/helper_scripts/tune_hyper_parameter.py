@@ -33,6 +33,9 @@ def get_command_line_args():
     parser.add_argument(
         "--log_dir", default=None, help="Path to folder where logs would be stored"
     )
+    parser.add_argument(
+        "--use_bilstm", default='1', help="Use Bi-LSTM layer on top of Pre-trained LM representation"
+    )
 
     return parser
 
@@ -97,7 +100,8 @@ def main():
                 --seed 1 \
                 --tokenizer_name {5} \
                 --output_dir {6}\
-                --log_dir {7}".format(
+                --log_dir {7}\
+                --use_bilstm {9}".format(
                 b,
                 l,
                 args.data_dir,
@@ -107,6 +111,7 @@ def main():
                 args.output_dir,
                 args.log_dir,
                 args.train_steps,
+                args.use_bilstm,
             )
             os.system(command)
 

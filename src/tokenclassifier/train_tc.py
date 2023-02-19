@@ -49,6 +49,10 @@ def get_command_line_args():
     cli_parser.add_argument("--config_name", default="", help="Configuration Name")
 
     cli_parser.add_argument(
+        "--use_bilstm", default="1", help="Use Bi-LSTM layer on top of Pre-trained LM representation"
+    )
+
+    cli_parser.add_argument(
         "--max_seq_len", default="512", help="Maximum Sequence Length"
     )
 
@@ -178,6 +182,9 @@ def main():
         arguments = arguments.replace("--do_train ", "")
         arguments = arguments.replace("--do_eval ", "")
         print("Performing evaluation only")
+
+    if args.use_bilstm == '1':
+        arguments = arguments + " --use_bilstm "
 
     arguments = arguments.replace("DATADIR", data_dir)
     arguments = arguments.replace("OUTPUTDIR", output_dir_name)
