@@ -18,5 +18,5 @@ tqdm==4.66.3
 progressbar==2.5
 sphinx-rtd-theme==1.1.1
 sphinx-argparse
-aim==3.16.0
+aim
 evaluate==0.4.0
